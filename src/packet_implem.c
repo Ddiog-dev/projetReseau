@@ -77,7 +77,6 @@ pkt_status_code pkt_encode(const pkt_t* pkt, char *buf, size_t *len)
     memcpy((void*)buf+sizeof(uint32_t),(const void*)&pkt->Timestamp,sizeof(uint32_t));
     //encodage payload
     if(pkt->payload!=NULL)strncpy(buf+sizeof(uint64_t),(const char*)pkt->payload,pkt_get_length(pkt));
-
     //calcule CRC + encodement
     uint32_t new_crc = getCRC(pkt);
     new_crc=htonl(new_crc);
