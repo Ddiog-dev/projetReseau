@@ -211,23 +211,23 @@ pkt_t *pop(pkt_t_node **list_head, pkt_t_node **list_tail, uint8_t seq_waited) {
    pkt_t_node *prev = *list_head;
    pkt_t_node *actual = *list_head;
    
-   if(actual == *list_tail && (actual -> pkt) -> seq != seq_waited) {
+   if(actual == *list_tail && (actual -> pkt) -> seqnum!= seq_waited) {
 			return NULL;
    }
    
    pkt_t *pkt;
 
-  if((actual -> pkt) -> seq == seq_waited) { 
+  if((actual -> pkt) -> seqnum== seq_waited) {
 	
     *list_head = (*list_head) -> next;
  
   
   } else {
-    while((actual -> pkt) -> seq != seq_waited ) {
+    while((actual -> pkt) -> seqnum!= seq_waited ) {
       prev = actual;
       actual = actual-> next;
 		
-		if(actual == *list_tail && (actual -> pkt) -> seq != seq_waited) {
+		if(actual == *list_tail && (actual -> pkt) -> seqnum!= seq_waited) {
 			return NULL;
 		}
     }
@@ -260,14 +260,14 @@ pkt_t *pop_s(pkt_t_node **list_head, pkt_t_node **list_tail, uint8_t seq_ack){
 	pkt_t_node *prev = *list_head;
     pkt_t_node *actual = *list_head;
     
-    uint8_t seq = (actual -> pkt) -> seq;
+    uint8_t seqnum= (actual -> pkt) -> seq;
     pkt_t *pkt;
     
-    if(actual == *list_tail && seq >= seq_ack && (uint8_t) (seq_ack-32) <= seq)  {
+    if(actual == *list_tail && seqnum>= seq_ack && (uint8_t) (seq_ack-32) <= seq)  {
 			return NULL;
     }
     
-    if(actual == *list_tail && actual->pkt->seq < seq_ack) {
+    if(actual == *list_tail && actual->pkt->seqnum< seq_ack) {
 		pkt = actual->pkt;
 		free(actual);
 		*list_tail = NULL;
@@ -281,9 +281,9 @@ pkt_t *pop_s(pkt_t_node **list_head, pkt_t_node **list_tail, uint8_t seq_ack){
 	  uint8_t seq_ack_min = seq_ack - window_max;
 	  
 		if(seq_ack_min > seq_ack) {
-	  		cond = (seq < seq_ack || seq_ack_min < seq);
+	  		cond = (seqnum< seq_ack || seq_ack_min < seq);
 		} else {
-	 		cond = (seq < seq_ack && seq > seq_ack - 31); 
+	 		cond = (seqnum< seq_ack && seqnum> seq_ack - 31);
 		}
 	  
 	  if(cond) {
@@ -299,14 +299,14 @@ pkt_t *pop_s(pkt_t_node **list_head, pkt_t_node **list_tail, uint8_t seq_ack){
 		actual = actual-> next;
 		}
 		if(actual != NULL) 	{
-		seq = (actual -> pkt) -> seq;}
+		seqnum= (actual -> pkt) -> seq;}
 		else {
 		actual = *list_tail;
 		return NULL;
 		}
     }
     
-    if((*list_tail) == actual && (*list_head) != NULL && seq < seq_ack  && (uint8_t) (seq_ack-32) < seq) {
+    if((*list_tail) == actual && (*list_head) != NULL && seqnum< seq_ack  && (uint8_t) (seq_ack-32) < seq) {
 	   pkt = actual->pkt;
 	   (*list_tail) = prev;
 	   free(actual);
@@ -316,7 +316,7 @@ pkt_t *pop_s(pkt_t_node **list_head, pkt_t_node **list_tail, uint8_t seq_ack){
     return NULL;
 }
 
-// Checks whether or not the packet with seqnul seq is already buffered
+// Checks whether or not the packet with seqnul seqnum is already buffered
 int is_in_buffer(pkt_t_node **list_head, pkt_t_node **list_tail, uint8_t seq) {
 	
 	if(*list_tail == NULL) return 0;
