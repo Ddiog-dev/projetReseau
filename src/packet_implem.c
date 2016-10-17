@@ -260,10 +260,10 @@ pkt_t *pop_s(pkt_t_node **list_head, pkt_t_node **list_tail, uint8_t seq_ack){
 	pkt_t_node *prev = *list_head;
     pkt_t_node *actual = *list_head;
     
-    uint8_t seqnum= (actual -> pkt) -> seq;
+    uint8_t seqnum= (actual -> pkt) -> seqnum;
     pkt_t *pkt;
     
-    if(actual == *list_tail && seqnum>= seq_ack && (uint8_t) (seq_ack-32) <= seq)  {
+    if(actual == *list_tail && seqnum>= seq_ack && (uint8_t) (seq_ack-32) <= seqnum)  {
 			return NULL;
     }
     
@@ -281,7 +281,7 @@ pkt_t *pop_s(pkt_t_node **list_head, pkt_t_node **list_tail, uint8_t seq_ack){
 	  uint8_t seq_ack_min = seq_ack - window_max;
 	  
 		if(seq_ack_min > seq_ack) {
-	  		cond = (seqnum< seq_ack || seq_ack_min < seq);
+	  		cond = (seqnum< seq_ack || seq_ack_min < seqnum);
 		} else {
 	 		cond = (seqnum< seq_ack && seqnum> seq_ack - 31);
 		}
@@ -299,14 +299,14 @@ pkt_t *pop_s(pkt_t_node **list_head, pkt_t_node **list_tail, uint8_t seq_ack){
 		actual = actual-> next;
 		}
 		if(actual != NULL) 	{
-		seqnum= (actual -> pkt) -> seq;}
+		seqnum= (actual -> pkt) -> seqnum;}
 		else {
 		actual = *list_tail;
 		return NULL;
 		}
     }
     
-    if((*list_tail) == actual && (*list_head) != NULL && seqnum< seq_ack  && (uint8_t) (seq_ack-32) < seq) {
+    if((*list_tail) == actual && (*list_head) != NULL && seqnum< seq_ack  && (uint8_t) (seq_ack-32) < seqnum) {
 	   pkt = actual->pkt;
 	   (*list_tail) = prev;
 	   free(actual);
