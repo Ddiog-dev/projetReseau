@@ -156,13 +156,6 @@ int main(int argc, char ** argv){
 			if(err2 == E_TYPE) fprintf(stderr, "send_ack : erreur de type de packet reçu\n"); 
 		}
 
-		//No de payload, congestion, envoi d'un NACK plus réduction de la fenêtre
-		if(pkt_stat == E_NOPAYLOAD) {
-			fprintf(stderr, "decode : pas de payload\n"); 
-			err2 = send_ack(sfd, PTYPE_NACK);
-			if(err2 == E_NOMEM) fprintf(stderr, "send_ack : erreur de mémoire\n");
-			if(err2 == E_TYPE) fprintf(stderr, "send_ack : erreur de type de packet reçu\n"); 
-		}
 
 		//Le packet décodé est valide, écriture sur la sortie ou bien dans la pile SI fenêtre correspond 
 		if(pkt_stat == PKT_OK) {

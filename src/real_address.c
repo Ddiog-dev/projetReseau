@@ -11,13 +11,10 @@ const char * real_address(const char *address, struct sockaddr_in6 *rval) {
   struct addrinfo *res;
   struct addrinfo hints;
 
+  memset(&hints, 0 , sizeof(hints));
   hints.ai_family = AF_INET6;
   hints.ai_socktype = SOCK_DGRAM;
-  hints.ai_flags = 0;    /* For wildcard IP address */
-  hints.ai_protocol = 0;          /* Any protocol */
-  hints.ai_canonname = NULL;
-  hints.ai_addr = 0;
-  hints.ai_next = 0;
+  hints.ai_flags = AI_PASSIVE;
 
   int status = getaddrinfo(address, NULL, &hints, &res);
 

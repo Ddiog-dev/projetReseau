@@ -227,7 +227,7 @@ void read_write_sender(const int sfd, const int fd){
 
 					// Last buffer slot is used, setting appropriate flag
 					if(buffer_items >= window){
-					window_flag = 0;
+						window_flag = 0;
 					}
 					seqnum++;
 				}
