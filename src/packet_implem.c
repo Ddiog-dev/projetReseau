@@ -1,239 +1,169 @@
 #include "packet_interface.h"
-#include <stdlib.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
+#include <arpa/inet.h>
 #include <zlib.h>
-#include <endian.h>
-
-
 /* Extra #includes */
 /* Your code will be inserted here */
-
 struct __attribute__((__packed__)) pkt {
-  	ptypes_t type : 3;
-  	uint8_t window : 5;
-	uint8_t seq;
-  	uint16_t length;
-    uint32_t timestamp;
-	uint32_t crc;
-	char* payload;
+    uint8_t	window:5;
+    ptypes_t type:3;
+    uint8_t seqnum;
+    uint16_t length;
+    uint32_t Timestamp;
+    char * payload;
+    uint32_t CRC;
 };
-
-  
 /* Extra code */
 /* Your code will be inserted here */
-
-
-// Error case?
-pkt_t* pkt_new(){
-	pkt_t* pkt = (pkt_t*) malloc(sizeof(pkt_t));
-	return pkt;
+pkt_t* pkt_new()
+{
+    pkt_t* newStruct=(pkt_t*)malloc(sizeof(pkt_t));
+    if (newStruct==NULL)return NULL;
+    return newStruct;
+}
+void pkt_del(pkt_t *pkt)
+{
+    if(pkt==NULL)return;
+    if(pkt->payload!=NULL)free(pkt->payload);
+    free(pkt);
+}
+uint32_t getCRC(const pkt_t * pkt){
+    unsigned long int crc = crc32(0L, Z_NULL, 0);
+    crc = crc32(crc, (unsigned char*)pkt, 8);
+    crc = crc32(crc, (unsigned char*)(pkt->payload), pkt_get_length(pkt));
+    return (uint32_t)crc;
 }
 
+pkt_status_code pkt_decode(const char *data, const size_t len, pkt_t *pkt)
+{
+    pkt_status_code  err;
+    //on décode window + type + seqnum + timestamp
+    memcpy((void*)pkt,(const void*)data,sizeof(uint64_t));
+    //si payload est NULL on fait un malloc
+    if(pkt->payload==NULL)pkt->payload=(char*)malloc(pkt_get_length(pkt));
+    //on copie le contenue du payload dans la zone payload
+    memcpy((void*)pkt->payload,(const void*)data+(sizeof(uint64_t)),pkt_get_length(pkt));
+    //on récupère l'ancien CRC, on calcule un nouveau CRC et on enregistre l'ancien dans pkt
+    uint32_t new_crc =getCRC(pkt);
+    uint32_t old_crc=*(uint32_t*)(data+8+pkt_get_length(pkt));
+    old_crc =ntohl(old_crc);
+    err=pkt_set_crc(pkt,new_crc);// on set le crc
+    if(err!=PKT_OK){
+        return E_UNCONSISTENT;
+    }
+    //on verifie que les valeurs sont corrects
+    if(pkt_get_crc(pkt)!=old_crc)return E_CRC;
+    if((size_t)pkt_get_length(pkt)+12!=len)return E_LENGTH;
+    if(pkt->type!=PTYPE_ACK&&pkt->type!=PTYPE_DATA)return E_TYPE;
+    return PKT_OK;
 
-void pkt_del(pkt_t *pkt){
-  if(pkt->type == PTYPE_DATA) free(pkt->payload);
-   	free(pkt);
+
 }
+pkt_status_code pkt_encode(const pkt_t* pkt, char *buf, size_t *len)
+{
+    if(pkt==NULL || buf==NULL)return E_UNCONSISTENT;
+    if(*len<12)return E_LENGTH;
+    int size= pkt_get_length(pkt)+3*sizeof(uint32_t);
+    if(12+pkt_get_length(pkt) > (uint16_t )(*len))
+        return E_NOMEM;
+    uint16_t sizeLen=pkt->length;// on récupère pkt->length en network byte order
+    //encodage type + window +seqnum
+    memcpy((void*)buf,(const void*)pkt,sizeof(uint16_t));
+    //encodage length
+    memcpy((void*)buf+sizeof(uint16_t),(const void*)&sizeLen,sizeof(uint16_t));
+    //encodage TimeStamp
+    memcpy((void*)buf+sizeof(uint32_t),(const void*)&pkt->Timestamp,sizeof(uint32_t));
+    //encodage payload
+    if(pkt->payload!=NULL)strncpy(buf+sizeof(uint64_t),(const char*)pkt->payload,pkt_get_length(pkt));
 
+    //calcule CRC + encodement
+    uint32_t new_crc = getCRC(pkt);
+    new_crc=htonl(new_crc);
+    memcpy((void*)buf+sizeof(uint64_t)+pkt_get_length(pkt),(const void*)&new_crc,sizeof(uint32_t));
+    *len=size;
+    return PKT_OK;
 
-
-pkt_status_code pkt_decode(const char *data, const size_t len, pkt_t *pkt){
-	if(len <= 8) {
-		return E_NOHEADER;
-	}
-	size_t payload_size;
-
-	memcpy(&pkt->seq, data+1, 1);
-	memcpy(&pkt->length, data+2, 2);
-    memcpy(&pkt->timestamp, data+4, 4);
-	pkt->length = be16toh(pkt->length);
-
-
-	payload_size = pkt->length;	
-	
-
-
-	pkt_set_payload(pkt, data+8, pkt->length);
-
-	unsigned char tmp;
-	memcpy(&tmp, data, 1);
-
-	pkt->type = tmp >> 5;
-	
-	pkt->window = tmp;
-	uint32_t crc1 = crc32(0L, (const unsigned char*) data, len-4);
-	uint32_t crc2;
-	memcpy(&crc2, &data[payload_size + 8], sizeof(uint32_t));
-	crc2 = be32toh(crc2);
-	if(crc1 != crc2){
-		return E_CRC;
-	}
-
-	return PKT_OK;
 }
-
-
-/*
- * Convert a struct pkt into a set of bytes ready to be sent over the wires,
- * (thus in network byte-order)
- * including the CRC32 of the header & payload of the packet
- *
- * @pkt: The struct that contains the info about the packet to send
- * @buf: A buffer to store the resulting set of bytes
- * @len: The number of bytes that can be written in buf.
- * @len-POST: The number of bytes written in the buffer by the function.
- * @return: A status code indicating the success or E_NOMEM if the buffer is
- * 		too small
- * */
-pkt_status_code pkt_encode(const pkt_t* pkt, char *buf, size_t *len){
-	// 1. check size
-	size_t header_size = 8;
-	size_t crc_size = 4;
-	size_t payload_size;
-
-
-	/*if(pkt->length % 4 != 0){
-		payload_size = pkt->length + 4-(pkt->length % 4);
-		bytes += 4;
-	} else {*/
-	payload_size = pkt->length;
-	//}
-	if(pkt->type != PTYPE_DATA){
-		payload_size = 0;
-	}
-	if(pkt->length > MAX_PAYLOAD_SIZE ||
-	   header_size + crc_size + payload_size > (*len)) {
-		return E_LENGTH;
-	}
-
-	// 2. group type and window in one char, and cat it
-	
-	unsigned char b;
-
-	b = pkt->type << 5;
-	b += pkt -> window;
-   	       
-	*buf = b;
-
-
-	// 3. cat seq
-	uint8_t seq = pkt->seq;
-	b = seq;
-	*(buf+1) = b;
-
-	// 4. cat length (2 bytes)
-
-	uint16_t length;
-	  
-	if(pkt->type == PTYPE_DATA) {
-	length = pkt->length;
-	}
-	else {
-	  length = 0;
-	}
-	length = htobe16(length);
-	memcpy(buf+2, &length, (size_t) 2); // copy length
-    
-    // 4.5 cat timestamp (4 bytes)
-	
-    uint32_t timestamp = pkt->timestamp;
-    //timestamp = htobe32(timestamp);
-    memcpy(buf+4, &timestamp, (size_t) 4); // Copy timestamp
-
-	// 5. payload
-
-	if(pkt->type == PTYPE_DATA){ 
-		memcpy(buf+8, pkt->payload, payload_size);
-	}
-
-	// 6. CRC
-
-	uLong crc = crc32(0L, (unsigned char*) buf, (size_t) payload_size + header_size);
-    char *a = (char*) malloc(sizeof(char) *4);
-	crc = htobe32(crc);
-	memcpy(a, &crc, 4);
-
-	memcpy(buf + payload_size + header_size, a, (size_t) 4);
-
-
-	free(a);
-
-	*len = payload_size + header_size + 4;
-  	return PKT_OK;
+ptypes_t pkt_get_type  (const pkt_t* pkt)
+{
+    return pkt->type;
 }
-
-ptypes_t pkt_get_type  (const pkt_t* pkt){
-	return pkt->type;
+uint8_t  pkt_get_window(const pkt_t* pkt)
+{
+    return pkt->window;
 }
-
-uint8_t  pkt_get_window(const pkt_t* pkt){
-	return pkt->window;
+uint8_t  pkt_get_seqnum(const pkt_t* pkt)
+{
+    return pkt->seqnum;
 }
-
-uint8_t  pkt_get_seqnum(const pkt_t* pkt){
-	return pkt->seq;
+uint16_t pkt_get_length(const pkt_t* pkt)
+{
+    return ntohs(pkt->length);
 }
-
-uint16_t pkt_get_length(const pkt_t* pkt){
-	return pkt->length;
+uint32_t pkt_get_timestamp   (const pkt_t* pkt)
+{
+    return pkt->Timestamp;
 }
-
-uint32_t pkt_get_crc   (const pkt_t* pkt){
-	return pkt->crc;
+uint32_t pkt_get_crc   (const pkt_t* pkt)
+{
+    return ntohl(pkt->CRC);
 }
-
-const char* pkt_get_payload(const pkt_t* pkt){
-	return pkt->payload;
+const char* pkt_get_payload(const pkt_t* pkt)
+{
+    if(pkt->payload==NULL)return NULL;
+    return pkt->payload;
 }
-
-
-pkt_status_code pkt_set_type(pkt_t *pkt, const ptypes_t type){
-	pkt->type = type;
-	return PKT_OK;
+pkt_status_code pkt_set_type(pkt_t *pkt, const ptypes_t type)
+{
+    if(pkt==NULL)return E_UNCONSISTENT;
+    if(type==PTYPE_DATA || type==PTYPE_ACK){
+        pkt->type=type;
+        return PKT_OK;
+    }
+    return E_TYPE;
 }
-
-pkt_status_code pkt_set_window(pkt_t *pkt, const uint8_t window){
-	pkt->window = window;
-	return PKT_OK;
-}
-
-pkt_status_code pkt_set_seqnum(pkt_t *pkt, const uint8_t seqnum){
-	pkt->seq = seqnum;
-	return PKT_OK;
-}
-
-pkt_status_code pkt_set_length(pkt_t *pkt, const uint16_t length){
-	pkt->length = length;
-	return PKT_OK;
-}
-
-pkt_status_code pkt_set_crc(pkt_t *pkt, const uint32_t crc){
-	pkt->crc = crc;
-	return PKT_OK;
-}
-
-pkt_status_code pkt_set_payload(pkt_t *pkt, const char *data, const uint16_t length){
-
-  pkt -> payload  = (char*) malloc(sizeof(char) * length);
-
-  memcpy(pkt->payload, data, length);
-  
-  pkt_set_length(pkt, length);
-  
-  return PKT_OK;	
-}
-
-
-pkt_status_code pkt_set_timestamp(pkt_t *pkt, const uint32_t timestamp){
-	pkt->timestamp = timestamp;
+pkt_status_code pkt_set_window(pkt_t *pkt, const uint8_t window)
+{
+    if(pkt==NULL)return E_UNCONSISTENT;
+    if(window>MAX_WINDOW_SIZE)return E_WINDOW;
+    pkt->window=window;
     return PKT_OK;
 }
-
-uint32_t pkt_get_timestamp(const pkt_t* pkt){
-	return pkt->timestamp;
+pkt_status_code pkt_set_seqnum(pkt_t *pkt, const uint8_t seqnum)
+{
+    if(pkt==NULL)return E_UNCONSISTENT;
+    pkt->seqnum=seqnum;
+    return PKT_OK;
 }
-
+pkt_status_code pkt_set_length(pkt_t *pkt, const uint16_t length)
+{
+    if(pkt==NULL)return E_UNCONSISTENT;
+    pkt->length=htons(length);
+    return PKT_OK;
+}
+pkt_status_code pkt_set_timestamp(pkt_t *pkt, const uint32_t timestamp)
+{
+    if(pkt==NULL)return E_UNCONSISTENT;
+    pkt->Timestamp=timestamp;
+    return PKT_OK;
+}
+pkt_status_code pkt_set_crc(pkt_t *pkt, const uint32_t crc)
+{
+    if(pkt==NULL)return E_UNCONSISTENT;
+    pkt->CRC=htonl(crc);
+    return PKT_OK;
+}
+pkt_status_code pkt_set_payload(pkt_t *pkt,const char *data,const uint16_t length)
+{
+    if(pkt==NULL)return E_UNCONSISTENT;
+    if(pkt->payload==NULL)pkt->payload=(char*)malloc(sizeof(char)*length);
+    if(pkt->payload==NULL)return E_NOMEM;
+    memcpy((void*)pkt->payload,data,length);
+    pkt_set_length(pkt,length);
+    return PKT_OK;
+}
 
 
 
@@ -254,7 +184,6 @@ int push(pkt_t_node **list_tail, pkt_t_node **list_head, pkt_t *pkt) {
 	  perror("malloc");
 	  return -1;
 	}
-	
 
   //si la liste est vide, pointeur vers le premier élément
   if(*list_tail == NULL) {
