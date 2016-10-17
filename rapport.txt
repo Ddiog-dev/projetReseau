@@ -1,0 +1,46 @@
+
+
+Réseaux informatiques
+Projet 1 - Protocole de transfert sans pertes
+Rapport de projet
+
+Cédric de Bellefroid, Sébastien d’Oreye
+
+
+
+
+Section 0
+
+Notre programme s’articule autour deux deux exécutables, receiver, le serveur qui reçoit une connexion entrante qui lui envoie un fichier, et sender, le client qui envoie un fichier vers le receiver.
+
+Chacun de ces programmes a une structure qui se rapproche assez de celle du programme qui nous a été fourni pour la seconde tâche ingénions, chat.c. La première étape est de résoudre le nom d’hôte passé en paramètre, avec la fonction real_address, ensuite la création d’un socket avec la fonction create_socket, l’attente d’un client coté receveur, avec l’appel à wait_for_client, et ensuite chaque programme lance sa boucle de lecture-écriture. Cette fonction est propre à chaque programme.
+
+sender :
+   La boucle est définie dans la fonction read_write_sender, dans le fichier read_write_sender.c. De façon similaire à la boucle dans la seconde tâche inginious, elle commence par un appel à select. Cet appel attend qu’un des descripteurs de fichiers qu’on lui passe en paramètre soit prêt à effectuer une opération de lecture ou d’écriture, ou que le temps spécifié dans la struct timeval en dernière paramètre soit écoulé, avant de poursuivre l’exécution. 
+receiver :
+   L’architecture diffère un peu de celle de sender. En effet, la boucle et les fonctionnalités principales sont déterminées directement dans la fonction main de ce programme. Le fichier read_write_sender.c regroupe les fonctions auxiliaires au fonctionnement de ce programme : 
+
+En outre, nous avons défini dans packet_implem.c une série de fonctions supplémentaires visant à implémenter les buffers respectifs de sender et receiver. La structure pkt_t_node est définie dans le header packet_interface.h. Il s’agit d’une liste simplement chainée, sur laquelle on opère en FIFO (c’est donc une file). Nous mémorisons en permanence les deux pointeurs vers la tête et la queue de cette file. Les fonctions opérant sur cette structure de données varient en fonction de si elles sont utilisées dans le receiver ou le sender, car ces deux programmes n’ont pas exactement les mêmes besoins. La fonction push insère en bout de liste le pkt en argument. La fonction pop utilise le paramètre seq_actual, elle enlève de la liste chainée le pkt_t dont le seqnum est égal au seq_actual. Tandis que la fonction pop_s, qui n’est utilisée que dans le sender, est une fonction qui retourne le premier pkt_t dans la liste dont le seqnum est inférieur à seq_waited. 
+
+Section 1. Résultats des tests d’interopérabilité
+
+Les tests ont été effectués avec une version légèrement modifiée de notre version initiale du projet. En effet, n’ayant pas réussi à implémenter le selective repeat dans les temps impartis, nous avons effectué cette modification par après (la seule chose qu’il nous restait à faire était d’implémenter les timers).
+
+Une fois cette modification apportée, les tests effectués avec deux autres groupes ont livré les résultats suivants : 
+
+L’envoi de données depuis l’entrée standard se passe sans aucun souci
+La réception de données sur la sortie standard fonctionne
+Cependant, un défaut dans la gestion des arguments du programme empêchait de mettre l’argument filename n’importe où dans les paramètres, ce qui a conduit à l’échec d’un des tests d’envoi de fichier texte.  En outre, la présence de quelques printf de debug dans le code rend difficile la comparaison des fichiers envoyés et reçus. Il nous était également impossible d’envoyer des fichiers autres que textuels (image, pdf, …).
+
+Un dernier bug que nous avons repéré est l’envoie de paquets EOF, défectueux dans notre sender (le programme ne se coupe pas à la fin de l’envoi d’un fichier). De plus, le receiver se coupait parfois avant que le sender ne reçoive l’acquis pour le dernier packet. Ce qui résultait en un problème de lecture. 
+
+
+Section 2. Modifications apportées
+
+Suite aux tests d’interopérabilité, nous nous sommes rendus compte de plusieurs modifications que nous devions apporter à notre code. Nous les listons ci-dessous.
+
+ • Dans packet_implem.c, nous avons changé l’appel strncpy par memcpy car cet appel nous empêchait de transférer des fichiers autres que des fichiers texte.
+ • Dans read_write_sender.c, nous avons modifié la gestion de l’envoie des end of file. L’implémentation que nous avions soumis précédemment le permettait, mais de façon non-conventionnelle (sans attendre d’acquis pour le dernier paquet envoyé). Nous avons rajouté 
+ • dans read_write_sender.c, nous avons ajouté comme mentionné plus haut l’implémentation des timeout pour le selective repeat. L’absence de cette implémentation dans la version initiale du projet n’empêchait pas le transfert de données mais rendait le programme incapable de réagir en cas de congestion ou de pertes sur le réseau. Dans cette nouvelle version, cette éventualité a été prise en compte et est parfaitement gérée par le programme (testé par link-sim).
+
+Dans read_write_sender.c, une modification a été opérée sur la gestion des EOF. Dans certains cas, notre receiver se coupait alors que le sender n’avait pas reçu d’acquis pour le packet EOF. Nous avons aussi ajouté un timer au receiver pour être certain de la bonne réception du dernier acquis qui permet au sender de se couper correctement. 
