@@ -24,9 +24,9 @@ size_t read_buf(const int sfd, char *buffer, const size_t buf_length) {
 
 		FD_ZERO(&read_fd);
 		FD_SET(sfd, &read_fd);
-	
+	printf(" readbufrwr 1 \n");
 		int i = select(sfd+1, &read_fd, NULL, NULL, NULL);
-		
+    printf(" readbufrwr 2 \n");
 		if(i >= 0) {
 
 		  	if(FD_ISSET(sfd, &read_fd)){
@@ -40,39 +40,42 @@ size_t read_buf(const int sfd, char *buffer, const size_t buf_length) {
 			}
 			return size;
 		}
+    printf(" readbufrwr 3 \n");
 		return -1;
 }
 
 
 int send_ack(const int sfd, const ptypes_t ptype) {
+    printf(" sendAckRwr 1 \n");
 	if(ptype != PTYPE_ACK && ptype != PTYPE_NACK) {
 		return E_TYPE;	
 	}
-
+    printf(" sendAckRwr 2 \n");
   char* message = (char*) malloc(sizeof(char)*PKT_MAX_PAYLOAD);
-  
+    printf(" sendAckRwr 3 \n");
   pkt_t* pkt = pkt_new();
   if(pkt == NULL){
     perror("malloc");
     return E_NOMEM;
   }
+    printf(" sendAckRwr 4 \n");
   size_t size = 0;
   int err;
-  
+
   if(ptype == PTYPE_NACK) {
 	  uint8_t mod = window_max % 2;
 	  last_congestion = window_max;
 	  if(mod != 0) {
 		  window_max = window_max - mod;
 	  }
-	  
-	  //Si congestion, on divise la window en deux 
+      printf(" sendAckRwr 5 \n");
+	  //Si congestion, on divise la window en deux
 	  window_max = window_max/2; 
 	  
 	  //Si trop de packet dans le buffer par rapport à la nouvelle window max, la window max prend la valeur
 	  //du nombre de pkt dans le buffer et window_actual est donc mis à 0 
 	  if(last_congestion - window_actual > window_max) {
-		  
+          printf(" sendAckRwr 6 \n");
 		  window_max = last_congestion - window_actual;
 		  window_actual = 0; 
 		
@@ -80,16 +83,18 @@ int send_ack(const int sfd, const ptypes_t ptype) {
 	  
 	  //Calcul de la nouvelle window_actual
 	  else {
+          printf(" sendAckRwr 6 \n");
 		window_actual = window_max - (last_congestion - window_actual);
 	  }  
   }
+    printf(" sendAckRwr 7 \n");
 	//Lorsqu'on envoie un ack, on augmente la taille max de la window de 1
 	// jusqu'en dessous	de la dernière valeur ou il y a eu congestion 
 	if(ptype == PTYPE_ACK && window_max < last_congestion - 1) {
 		window_max = window_max + 1;
 		window_actual = window_actual + 1; 
 	}
-	
+    printf(" sendAckRwr 8 \n");
   err = pkt_set_type(pkt, ptype);
   if(err != PKT_OK) fprintf(stderr, "Send_ack : erreur de set_type\n");
   pkt_set_window(pkt, (uint8_t) window_actual);
@@ -100,7 +105,7 @@ int send_ack(const int sfd, const ptypes_t ptype) {
   if(err != PKT_OK) fprintf(stderr, "Send_ack : erreur de set_payload\n");
   pkt_set_seqnum(pkt, seq_actual);
   if(err != PKT_OK) fprintf(stderr, "Send_ack : erreur de set_seqnum\n");
-					
+    printf(" sendAckRwr 9 \n");
   size = 524;
 
   pkt_encode(pkt, message, (size_t*)&size);				
@@ -108,33 +113,34 @@ int send_ack(const int sfd, const ptypes_t ptype) {
 	if(err<0) { 
 		perror("Write");
 		return -1 ;
-}	
-
+}
+    printf(" sendAckRwr 10 \n");
 	free(message);
 	pkt_del(pkt);
-  
+    printf(" sendAckRwr 11 \n");
 	return 0;
 }
 
 
 pkt_status_code write_buf(const int sfd, pkt_t *pkt, pkt_t_node **list_head,  pkt_t_node **list_tail) {
-	
+    printf(" write_bufRwr 1 \n");
   int err;
   
   if(pkt_get_type(pkt) == PTYPE_DATA) {
 	  
 	int cond = 0;
-	
+      printf(" write_bufRwr 2 \n");
 	if((uint8_t) (seq_actual + window_max) < window_max) {
 		cond = (pkt_get_seqnum(pkt) > (uint8_t) (seq_actual + window_max) && pkt_get_seqnum(pkt) < seq_actual);
 	}
 	else {
 		cond = pkt_get_seqnum(pkt) < seq_actual && pkt_get_seqnum(pkt) > seq_actual + window_max;
-	}	
-  
+	}
+      printf(" write_bufRwr 3 \n");
     if(cond){
     	return E_SEQNUM;
     }
+      printf(" write_bufRwr 4 \n");
     // C'est le bon packet 
     if(pkt_get_seqnum(pkt) == seq_actual) {
 
@@ -152,7 +158,7 @@ pkt_status_code write_buf(const int sfd, pkt_t *pkt, pkt_t_node **list_head,  pk
       pkt_t *pkt_pop = pop(list_head, list_tail, (int) seq_actual); 
 
       //Parcours de la liste
-      
+        printf(" write_bufRwr 5 \n");
       while(pkt_pop != NULL) {
 			//Enleve un slot vide
 			window_actual += 1;
@@ -167,19 +173,19 @@ pkt_status_code write_buf(const int sfd, pkt_t *pkt, pkt_t_node **list_head,  pk
 			pkt_del(pkt_pop);
 			pkt_pop = pop(list_head, list_tail, (int) seq_actual);
       }
- 
+        printf(" write_bufRwr 6 \n");
       pkt_del(pkt);
-      
+        printf(" write_bufRwr 7 \n");
       //Renvoier un ack avec le packet attendu
       err = send_ack(sfd, PTYPE_ACK);
       if(err == E_NOMEM) fprintf(stderr, "send_ack : erreur de mémoire\n");
-	  if(err == E_TYPE) fprintf(stderr, "send_ack : erreur de type de packet reçu\n"); 
-      
+	  if(err == E_TYPE) fprintf(stderr, "send_ack : erreur de type de packet reçu\n");
+        printf(" write_bufRwr 8 \n");
       return PKT_OK;
 		   
     }
 
-
+      printf(" write_bufRwr 9\n");
     //Stocker le packet dans la liste chainée
     
     if(window_actual == 0) return E_NOMEM;
@@ -195,13 +201,13 @@ pkt_status_code write_buf(const int sfd, pkt_t *pkt, pkt_t_node **list_head,  pk
 		if(err == E_NOMEM) fprintf(stderr, "send_ack : erreur de mémoire\n");
 		if(err == E_TYPE) fprintf(stderr, "send_ack : erreur de type de packet reçu\n"); 
 	}
-    
-	
+
+
 	else pkt_del(pkt);
 	return PKT_OK;
-
+      printf(" write_bufRwr 10 \n");
   }
-
+    printf(" write_bufRwr 11 \n");
   err = send_ack(sfd, PTYPE_ACK);
   //Si différent de PTYPE_DATA
   return E_TYPE;
