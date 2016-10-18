@@ -240,11 +240,12 @@ uint32_t pkt_get_timestamp(const pkt_t* pkt){
 
 // Enqueues the pacekt *pkt onto the buffer, on the TAIL side
 int push(pkt_t_node **list_tail, pkt_t_node **list_head, pkt_t *pkt) {
-	
+
    if((*list_head) == NULL) *list_tail = NULL;
    if((*list_tail) == NULL) *list_head = NULL; 
-
+ 
    pkt_t_node *new = (pkt_t_node *) malloc(sizeof(pkt_t_node));
+
    
    new->pkt = pkt;
    new->next = NULL;
@@ -326,9 +327,10 @@ pkt_t *pop(pkt_t_node **list_head, pkt_t_node **list_tail, uint8_t seq_waited) {
 // Dequeues the HEAD packet of the buffer, for the sender
 // @see read_write_sender.c
 pkt_t *pop_s(pkt_t_node **list_head, pkt_t_node **list_tail, uint8_t seq_ack){
-
-	if(*list_head == NULL || *list_tail == NULL) return NULL; 
-	
+fflush(stdout);
+	if(*list_head == NULL || *list_tail == NULL){
+		return NULL;
+	}	
 	pkt_t_node *prev = *list_head;
     pkt_t_node *actual = *list_head;
     
@@ -336,6 +338,8 @@ pkt_t *pop_s(pkt_t_node **list_head, pkt_t_node **list_tail, uint8_t seq_ack){
     pkt_t *pkt;
     
     if(actual == *list_tail && seq >= seq_ack && (uint8_t) (seq_ack-32) <= seq)  {
+//TODO
+fflush(stdout);
 			return NULL;
     }
     
@@ -437,3 +441,4 @@ clock_t peek_stime(pkt_t_node ** list_tail){
 	}
 		return (*list_tail)->stime;
 }
+

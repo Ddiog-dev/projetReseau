@@ -58,7 +58,7 @@ void read_write_sender(const int sfd, const int fd){
 		
 		i = select(max(sfd, fd) +1, &read_fd, NULL, NULL, &tv);
 		
-		if((i == 0 && buffer_items != 0) || !wait_for_ack) {
+	/*	if((i == 0 && buffer_items != 0) || !wait_for_ack) {
 					pkt_t *pkt_pop = pop(&buffer_head, &buffer_tail, last_ack);
 					pkt_get_seqnum(pkt_pop);
 					size = 524;
@@ -66,7 +66,7 @@ void read_write_sender(const int sfd, const int fd){
 					write(sfd, (void*) message, size);
 					push(&buffer_tail, &buffer_head, pkt_pop);	
 					wait_for_ack = 1;		
-		}
+		}*/
 
 		//Detected something
 		if(i > 0){ 
@@ -75,9 +75,9 @@ void read_write_sender(const int sfd, const int fd){
 			*	RECEIVING PACKETS
 			*	
 			*/
-			if(FD_ISSET(sfd, &read_fd)){ 
+			if(FD_ISSET(sfd, &read_fd)){ );
 				err = read(sfd, (void*) message, PKT_MAX_PAYLOAD);
-	
+
 				if(err == -1){
 					perror("read 1");
 					break;
@@ -89,10 +89,11 @@ void read_write_sender(const int sfd, const int fd){
 					break;
 				}
 
+
 				size = (ssize_t) err;
 
 				pkt_status_code status = pkt_decode(message, size, pkt);
-				
+
 				window = pkt_get_window(pkt);
 
 				if(status != PKT_OK){
@@ -116,20 +117,28 @@ void read_write_sender(const int sfd, const int fd){
 				} else {*/
 
 					if(pkt_get_type(pkt) == PTYPE_ACK){
-						
+
+						// Manage seqnum of EOF packet
 						uint8_t rseq = pkt_get_seqnum(pkt);
 						if(seq_eof +1 == rseq && eof) eof_ack = 1;
 						if(eof) wait_for_ack = 0;
 						
+						// Not an EOF
 						last_ack = rseq;
+
 						pkt_t *pkt_pop = pop_s(&buffer_head, &buffer_tail, rseq);
+
 						while(pkt_pop != NULL){
 							buffer_items --;
 							window_flag = 1;
-							pkt_del(pkt_pop);
+
+	// TODO This call segfaults; but why?
+	// TODO Memleaks inside
+							//pkt_del(pkt_pop);
+
 							pkt_pop = pop_s(&buffer_head, &buffer_tail, rseq);
 
-						}
+						};
 						pkt_del(pkt);
 						if(is_in_buffer(&buffer_head, &buffer_tail, rseq +1) && eof){
 							wait_for_ack = 0;
@@ -141,6 +150,7 @@ void read_write_sender(const int sfd, const int fd){
 						}
 					}
 				//}
+
 			}
 
 			/*
@@ -169,7 +179,9 @@ void read_write_sender(const int sfd, const int fd){
 						fprintf(stderr, "Error sending EOF packet on socket");
 					}
 					seq_eof = seqnum;
+
 					int perr = push(&buffer_tail, &buffer_head, eofpkt);
+
 					if(perr == -1){
 						fprintf(stderr, "Error buffering packet\n");
 						break;
@@ -245,3 +257,5 @@ void read_write_sender(const int sfd, const int fd){
 	free(message);
 	
 }
+
+

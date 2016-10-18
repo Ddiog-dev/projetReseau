@@ -22,5 +22,6 @@ test :
 	gcc $(CFLAGS) -o test tests/test.c src/packet_implem.c src/real_address.c src/create_socket.c src/wait_for_client.c src/read_write_receiver.c -lz -lcunit 
 
 clear : 
-	rm -f $(OBJ)
+	rm -f sender
+	rm -f receiver
 

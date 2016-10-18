@@ -122,5 +122,4 @@ uint8_t peek_seqnum(pkt_t_node ** list_tail);
 
 clock_t peek_stime(pkt_t_node ** list_tail);
 
-
 #endif
