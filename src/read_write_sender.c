@@ -99,7 +99,7 @@ void read_write_sender(const int sfd, const int fd){
 					fprintf(stderr, "Error in decode() - status code %d\n", status);
 				}
 				
-				if(pkt_get_type(pkt) == PTYPE_NACK){
+			/*	if(pkt_get_type(pkt) == PTYPE_NACK){
 					
 					uint8_t rseq = pkt_get_seqnum(pkt);
 					
@@ -113,7 +113,7 @@ void read_write_sender(const int sfd, const int fd){
 					push(&buffer_tail, &buffer_head, pkt_pop);	
 						
 					pkt_del(pkt);
-				} else {
+				} else {*/
 
 					if(pkt_get_type(pkt) == PTYPE_ACK){
 						
@@ -140,7 +140,7 @@ void read_write_sender(const int sfd, const int fd){
 							fprintf(stderr, "Unexpected packet type (PTYPE_DATA)\n");
 						}
 					}
-				}
+				//}
 			}
 
 			/*
@@ -151,10 +151,12 @@ void read_write_sender(const int sfd, const int fd){
 			if(FD_ISSET(fd, &read_fd) && !eof){
 				err = read(fd, (void*)message, PKT_MAX_PAYLOAD);
 				if(err == 0){
+					// Read 0 bytes of data -> EOF reached. Send DATA packet with length 0.
 					eof = 1;
 					size = 524;
 					char * dull = "";
 					pkt_t * eofpkt = pkt_new();
+
 					pkt_set_type(eofpkt, PTYPE_DATA);
 					pkt_set_seqnum(eofpkt, seqnum);
 					pkt_set_payload(eofpkt, dull, 0);

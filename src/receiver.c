@@ -10,7 +10,7 @@
 #include <string.h>
 #include <stdlib.h>
 
-#define MSG_LEN 520
+#define MSG_LEN 524
 #define WINDOW_MAX 31
 #define PKT_MAX_PAYLOAD 512
 
@@ -112,7 +112,7 @@ int main(int argc, char ** argv){
 	
 
 	while((!eof && seq_actual != eof_seq + 1) || !eof) {
-		
+
 		
 	  //Lecture du socket en attendant que quelques chose arrive 
 	  size_t size_read = read_buf(sfd, buffer, length_buf);
@@ -123,6 +123,8 @@ int main(int argc, char ** argv){
 	
 	  //Décoder ce qui arrive sur le buffer
 	  pkt_stat = pkt_decode(buffer, size_read, pkt);
+
+
 	  
 	  if(pkt_stat == E_LENGTH)  fprintf(stderr, "decode : erreur de taille de pkt_t\n");	
 
@@ -140,7 +142,7 @@ int main(int argc, char ** argv){
 			
 			eof_seq = pkt_get_seqnum(pkt);
 	  }
-	  
+
 	  if(seq_actual > eof_seq) eof = 1;
 	 
 	
@@ -163,7 +165,7 @@ int main(int argc, char ** argv){
 			if(err2 == E_TYPE) fprintf(stderr, "write_buf : erreur de type de pkt_t attendu\n"); 
 			if(err2 == E_SEQNUM) fprintf(stderr, "write_buf : pkt_t pas dans la window\n");
 		}
-	  
+	  	  		
 	}
 
        
@@ -178,6 +180,7 @@ int main(int argc, char ** argv){
 	}
 		
 	// Free de toutes les instances buffers + pile	
+
 	free(list_head);
 	free(list_tail);
 	free(buffer);

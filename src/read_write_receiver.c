@@ -45,7 +45,6 @@ size_t read_buf(const int sfd, char *buffer, const size_t buf_length) {
 
 
 int send_ack(const int sfd, const ptypes_t ptype) {
-	// Erreur sur le type
 	if(ptype != PTYPE_ACK && ptype != PTYPE_NACK) {
 		return E_TYPE;	
 	}
