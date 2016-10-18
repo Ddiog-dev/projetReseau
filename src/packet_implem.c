@@ -44,7 +44,9 @@ pkt_status_code pkt_decode(const char *data, const size_t len, pkt_t *pkt){
 		return E_NOHEADER;
 	}
 	//size_t payload_size;
-
+    if(len==8){
+        return E_NOPAYLOAD;
+    }
 	memcpy(&pkt->seq, data+1, 1);
 	memcpy(&pkt->length, data+2, 2);
     memcpy(&pkt->timestamp, data+4, 4);
