@@ -90,5 +90,6 @@ int main(int argc, char ** argv){
 	if(f){
 		free(filename);
 	}
+	fprintf(stderr, "Operation terminated\n");
 	return 0;
 }

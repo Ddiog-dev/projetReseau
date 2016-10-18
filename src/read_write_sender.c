@@ -39,7 +39,7 @@ void read_write_sender(const int sfd, const int fd){
 	int eof = 0;
 	int err;
 	ssize_t size;
-	char* message = (char*) malloc(sizeof(char)*PKT_MAX_PAYLOAD);
+	char* message = (char*) malloc(sizeof(char)*PKT_MAX_PAYLOAD+12);
 	uint8_t seqnum = 0;
 	last_ack = 0;
 	FD_ZERO(&read_fd);
@@ -58,15 +58,7 @@ void read_write_sender(const int sfd, const int fd){
 		
 		i = select(max(sfd, fd) +1, &read_fd, NULL, NULL, &tv);
 		
-	/*	if((i == 0 && buffer_items != 0) || !wait_for_ack) {
-					pkt_t *pkt_pop = pop(&buffer_head, &buffer_tail, last_ack);
-					pkt_get_seqnum(pkt_pop);
-					size = 524;
-					pkt_encode(pkt_pop, message, (size_t*)&size);
-					write(sfd, (void*) message, size);
-					push(&buffer_tail, &buffer_head, pkt_pop);	
-					wait_for_ack = 1;		
-		}*/
+
 
 		//Detected something
 		if(i > 0){ 
@@ -75,8 +67,8 @@ void read_write_sender(const int sfd, const int fd){
 			*	RECEIVING PACKETS
 			*	
 			*/
-			if(FD_ISSET(sfd, &read_fd)){ );
-				err = read(sfd, (void*) message, PKT_MAX_PAYLOAD);
+			if(FD_ISSET(sfd, &read_fd)){
+				err = read(sfd, (void*) message, PKT_MAX_PAYLOAD+12);
 
 				if(err == -1){
 					perror("read 1");
@@ -99,22 +91,6 @@ void read_write_sender(const int sfd, const int fd){
 				if(status != PKT_OK){
 					fprintf(stderr, "Error in decode() - status code %d\n", status);
 				}
-				
-			/*	if(pkt_get_type(pkt) == PTYPE_NACK){
-					
-					uint8_t rseq = pkt_get_seqnum(pkt);
-					
-					last_ack = rseq;
-					
-					pkt_t *pkt_pop = pop(&buffer_head, &buffer_tail, rseq);
-					
-					size = 524;
-					pkt_encode(pkt_pop, message, (size_t*)&size);
-					write(sfd, (void*) message, size);
-					push(&buffer_tail, &buffer_head, pkt_pop);	
-						
-					pkt_del(pkt);
-				} else {*/
 
 					if(pkt_get_type(pkt) == PTYPE_ACK){
 
@@ -134,7 +110,7 @@ void read_write_sender(const int sfd, const int fd){
 
 	// TODO This call segfaults; but why?
 	// TODO Memleaks inside
-							//pkt_del(pkt_pop);
+							pkt_del(pkt_pop);
 
 							pkt_pop = pop_s(&buffer_head, &buffer_tail, rseq);
 
@@ -149,8 +125,6 @@ void read_write_sender(const int sfd, const int fd){
 							fprintf(stderr, "Unexpected packet type (PTYPE_DATA)\n");
 						}
 					}
-				//}
-
 			}
 
 			/*
@@ -252,8 +226,6 @@ void read_write_sender(const int sfd, const int fd){
 		
 		
 	}
-
-	printf("Finish\n");
 	free(message);
 	
 }

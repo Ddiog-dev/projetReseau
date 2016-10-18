@@ -4,6 +4,7 @@
 #include <string.h>
 #include <zlib.h>
 #include <endian.h>
+#include <inttypes.h>
 
 
 /* Extra #includes */
@@ -42,7 +43,7 @@ pkt_status_code pkt_decode(const char *data, const size_t len, pkt_t *pkt){
 	if(len <= 8) {
 		return E_NOHEADER;
 	}
-	size_t payload_size;
+	//size_t payload_size;
 
 	memcpy(&pkt->seq, data+1, 1);
 	memcpy(&pkt->length, data+2, 2);
@@ -50,7 +51,7 @@ pkt_status_code pkt_decode(const char *data, const size_t len, pkt_t *pkt){
 	pkt->length = be16toh(pkt->length);
 
 
-	payload_size = pkt->length;	
+	//payload_size = pkt->length;	
 	
 
 
@@ -64,9 +65,10 @@ pkt_status_code pkt_decode(const char *data, const size_t len, pkt_t *pkt){
 	pkt->window = tmp;
 	uint32_t crc1 = crc32(0L, (const unsigned char*) data, len-4);
 	uint32_t crc2;
-	memcpy(&crc2, &data[payload_size + 8], sizeof(uint32_t));
+	memcpy(&crc2, &data[len-4], sizeof(uint32_t));
 	crc2 = be32toh(crc2);
 	if(crc1 != crc2){
+printf("%"PRIu32" vs %"PRIu32"\n", crc1, crc2);
 		return E_CRC;
 	}
 
@@ -92,13 +94,7 @@ pkt_status_code pkt_encode(const pkt_t* pkt, char *buf, size_t *len){
 	size_t crc_size = 4;
 	size_t payload_size;
 
-
-	/*if(pkt->length % 4 != 0){
-		payload_size = pkt->length + 4-(pkt->length % 4);
-		bytes += 4;
-	} else {*/
 	payload_size = pkt->length;
-	//}
 	if(pkt->type != PTYPE_DATA){
 		payload_size = 0;
 	}
