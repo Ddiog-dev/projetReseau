@@ -207,9 +207,12 @@ void test_stack(void){
 
 	CU_ASSERT_EQUAL(head->pkt, elem1);
 
+	CU_ASSERT_EQUAL(0, peek_seqnum(&head));
 	CU_ASSERT_EQUAL(0, peek_seqnum(&tail));
 
 	push(&tail, &head, elem2);
+
+	CU_ASSERT_EQUAL(0, peek_seqnum(&head));
 
 	CU_ASSERT_EQUAL(1, peek_seqnum(&tail));
 
@@ -229,7 +232,7 @@ void test_stack(void){
     
 }
 void test_create_socket(){
-	/*
+
 	int src_port=65001;
 	int dst_port=65001;
 	struct sockaddr_in6 source_addr;
@@ -248,7 +251,7 @@ void test_create_socket(){
 	CU_ASSERT_NOT_EQUAL(err,-1);
 	err=create_socket(NULL,0,&dest_addr,-1);
 	CU_ASSERT_EQUAL(err,-1);
-	 */
+
 }
 /*
 void test_read_write_sender(){

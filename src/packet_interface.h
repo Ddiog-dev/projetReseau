@@ -38,6 +38,7 @@ typedef enum {
 	E_NOMEM,        /* Not enough memory */
 	E_NOHEADER,     /* Packet is too short thus has no header */
 	E_UNCONSISTENT, /* Packet is unconsistent */
+	E_NOPAYLOAD, /* No Payload */
 } pkt_status_code;
 
 /* Create a new struct pkt, to be free'd by pkt_del

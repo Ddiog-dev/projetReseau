@@ -32,14 +32,20 @@ timeCheck *timeCheck_head = NULL;
 timeCheck *timeCheck_tail = NULL;
 
 int buffer_items = 0;
-
+/*
+ * retourne le maximum entre a et b
+ */
 int max(int a, int b) {
 	
 	if(a>b) return a; 
 	else return b;
 	
 }
-
+/* Loop reading a socket and printing to stdout,
+ * while reading stdin and writing to the socket
+ * @sfd: The socket file descriptor. It is both bound and connected.
+ * @return: as soon as stdin signals EOF
+ */
 void read_write_sender(const int sfd, const int fd){
 
 	int window_flag = 1; // Sets to 0 when window runs out of free slots
@@ -237,6 +243,9 @@ void read_write_sender(const int sfd, const int fd){
 	free(message);
 	
 }
+/*
+ * crée une nouvelle structure timeCheck et initialise les champs a timestamp et seqnum
+ */
 timeCheck* init(uint32_t timeStamp, uint8_t seqnum){
 	timeCheck* new=(timeCheck*)malloc(sizeof(timeCheck));
 	if(new==NULL)return NULL;
@@ -252,9 +261,8 @@ int remove_from_buffer(timeCheck **list_head,timeCheck **list_tail, uint8_t seq_
 
 	timeCheck* iter=*list_head;//on initialise le pointeur qui va nous permettre de parcourir la liste
 	if(iter==NULL)return -1;
-	if(seq_wanted<0)return -1;
 	while(iter->next!=NULL){
-		if(seq_wanted=iter->seqnum){
+		if(seq_wanted==iter->seqnum){
 			if(iter->prev!=NULL)iter->prev->next=iter->next;
 			iter->next->prev=iter->prev;
 			free(iter);
@@ -262,8 +270,8 @@ int remove_from_buffer(timeCheck **list_head,timeCheck **list_tail, uint8_t seq_
 		}
 		iter=iter->next;
 	}
-	if(seq_wanted=iter->seqnum){
-		if(*list_head=*list_tail){
+	if(seq_wanted==iter->seqnum){
+		if((*list_head)==(*list_tail)){
 			*list_head=NULL;
 			*list_tail=NULL;
 			free(iter);
