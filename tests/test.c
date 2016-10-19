@@ -3,12 +3,15 @@
 #include "CUnit/Headers/Basic.h"
 
 #include "../src/packet_interface.h"
+#include "../src/create_socket.h"
+#include "../src/real_address.h"
+#include "../src/read_write_sender.h"
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
 #include <zlib.h>
 
-
+#define MAX_SIZE 524
 // Tests de packet_implem
 
 void test_pkt_new(void) { 
@@ -157,15 +160,15 @@ void test_pkt_decode(void) {
 	pkt_set_payload(pkt, "aaaaaa", (uint16_t)7);
 	pkt_set_seqnum(pkt, (uint8_t) 16);
 	
-	char *buffer = (char*) malloc(sizeof(char)*520);
+	char *buffer = (char*) malloc(sizeof(char)*MAX_SIZE);
 	
 	ptypes_t type; 
 	
-	size_t size = 520;
+	size_t size = MAX_SIZE;
 	
 	pkt_encode(pkt, buffer, &size);
 	
-	type = pkt_decode(buffer, 520, pkt2);
+	type = pkt_decode(buffer, MAX_SIZE, pkt2);
 	
 	CU_ASSERT_EQUAL(type, (ptypes_t) E_CRC);   
 	
@@ -173,7 +176,7 @@ void test_pkt_decode(void) {
 	
 	CU_ASSERT_EQUAL(type, (ptypes_t) E_NOHEADER);
 	
-	type = pkt_decode(buffer, (size_t) 4, pkt2);
+	type = pkt_decode(buffer, (size_t) 8, pkt2);
 	
 	CU_ASSERT_EQUAL(type, (ptypes_t) E_NOPAYLOAD);
 	
@@ -225,6 +228,40 @@ void test_stack(void){
 	free_buffer(&head, &tail);
     
 }
+void test_create_socket(){
+	/*
+	int src_port=65001;
+	int dst_port=65001;
+	struct sockaddr_in6 source_addr;
+	struct sockaddr_in6 dest_addr;
+	int err=0;
+	const char* charErr;
+	//test real_address
+	charErr=real_address("::1",&source_addr);
+	CU_ASSERT_EQUAL(charErr,NULL);
+	charErr=real_address("::1",&dest_addr);
+	CU_ASSERT_EQUAL(charErr,NULL);
+	// Test creation de socket
+	err=create_socket(&source_addr,src_port,NULL,0);
+	CU_ASSERT_NOT_EQUAL(err,-1);
+	err=create_socket(NULL,0,&dest_addr,dst_port);
+	CU_ASSERT_NOT_EQUAL(err,-1);
+	err=create_socket(NULL,0,&dest_addr,-1);
+	CU_ASSERT_EQUAL(err,-1);
+	 */
+}
+/*
+void test_read_write_sender(){
+	int fd=open("filetest.txt",O_RDONLY);
+	int src_port=65001;
+	int dst_port=65001;
+	int sfd_sender;
+	int sfd_receiver;
+	struct sockaddr_in6 source_addr;
+	struct sockaddr_in6 dest_addr;
+	sfd_sender=create_socket(&source_addr,src_port,NULL,0);
+	sfd_receiver=create_socket(NULL,0,&dest_addr,dst_port);
+} */
 
 int main(void){
 	
@@ -243,7 +280,7 @@ int main(void){
 	if( NULL == pSuite ) { CU_cleanup_registry(); return CU_get_error(); }
 	
 	
-	if ((NULL == CU_add_test(pSuite, "Test ptr not null", test_pkt_new)) || (NULL == CU_add_test(pSuite, "Test set_type", test_pkt_set_type)) || (NULL == CU_add_test(pSuite, "Test set_window", test_pkt_set_window)) || (NULL == CU_add_test(pSuite, "Test set_length", test_pkt_set_length)) || (NULL == CU_add_test(pSuite, "Test set_crc", test_pkt_set_crc)) || (NULL == CU_add_test(pSuite, "Test set_seqnum", test_pkt_set_seqnum)) || (NULL == CU_add_test(pSuite, "Test set_payload", test_pkt_set_payload)) || (NULL == CU_add_test(pSuite, "Test encode", test_pkt_encode)) || (NULL == CU_add_test(pSuite, "Test decode", test_pkt_decode)) || (NULL == CU_add_test(pSuite, "Test buffer", test_stack))) {
+	if ((NULL == CU_add_test(pSuite, "Test ptr not null", test_pkt_new)) || (NULL == CU_add_test(pSuite, "Test set_type", test_pkt_set_type)) || (NULL == CU_add_test(pSuite, "Test set_window", test_pkt_set_window)) || (NULL == CU_add_test(pSuite, "Test set_length", test_pkt_set_length)) || (NULL == CU_add_test(pSuite, "Test set_crc", test_pkt_set_crc)) || (NULL == CU_add_test(pSuite, "Test set_seqnum", test_pkt_set_seqnum)) || (NULL == CU_add_test(pSuite, "Test set_payload", test_pkt_set_payload)) || (NULL == CU_add_test(pSuite, "Test encode", test_pkt_encode)) || (NULL == CU_add_test(pSuite, "Test decode", test_pkt_decode)) || (NULL == CU_add_test(pSuite, "Test buffer", test_stack))|| (NULL == CU_add_test(pSuite, "Test create_socket", test_create_socket))) {
 		
 		
 		CU_cleanup_registry(); return CU_get_error();

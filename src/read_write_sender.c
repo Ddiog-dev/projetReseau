@@ -12,7 +12,12 @@
 #include "packet_interface.h"
 #include "read_write_sender.h"
 #define PKT_MAX_PAYLOAD 512
-
+typedef struct timeCheck{
+	uint8_t seqnum;
+	uint32_t timestamp;
+	struct timeCheck* next;
+	struct timeCheck* prev;
+}timeCheck;
 int window = 31; // Window size
 uint8_t seq_eof; 
 int eof_ack = 0; 
@@ -22,6 +27,9 @@ int wait_for_ack = 1;
 /* Variables utilisées pour le sending buffer */
 pkt_t_node *buffer_head = NULL;
 pkt_t_node *buffer_tail = NULL;
+/* variables du timeout buffer */
+timeCheck *timeCheck_head = NULL;
+timeCheck *timeCheck_tail = NULL;
 
 int buffer_items = 0;
 
@@ -228,6 +236,77 @@ void read_write_sender(const int sfd, const int fd){
 	}
 	free(message);
 	
+}
+timeCheck* init(uint32_t timeStamp, uint8_t seqnum){
+	timeCheck* new=(timeCheck*)malloc(sizeof(timeCheck));
+	if(new==NULL)return NULL;
+	new->seqnum=seqnum;
+	new->timestamp=timeStamp;
+	return new;
+}
+/*
+ * retire l'élément timeCheck possédant le numéro de séquence seq_wanted
+ * renvoi -1 en cas d'erreur, 0 si on réussi a retirer l'élement voulu et 1 si il n'est pas dans le buffer
+ */
+int remove_from_buffer(timeCheck **list_head,timeCheck **list_tail, uint8_t seq_wanted){
+
+	timeCheck* iter=*list_head;//on initialise le pointeur qui va nous permettre de parcourir la liste
+	if(iter==NULL)return -1;
+	if(seq_wanted<0)return -1;
+	while(iter->next!=NULL){
+		if(seq_wanted=iter->seqnum){
+			if(iter->prev!=NULL)iter->prev->next=iter->next;
+			iter->next->prev=iter->prev;
+			free(iter);
+			return 0;
+		}
+		iter=iter->next;
+	}
+	if(seq_wanted=iter->seqnum){
+		if(*list_head=*list_tail){
+			*list_head=NULL;
+			*list_tail=NULL;
+			free(iter);
+			return 0;
+		}
+		iter->prev->next=NULL;
+		free(iter);
+		return 0;
+	}
+	return 1;
+}
+/*
+ * ajoute un l'élément elem au buffer de timeCheck
+ * retourne 0 en cas de succès et -1 si elem pointe vers NULL
+ */
+int push_time_check(timeCheck **list_head,timeCheck **list_tail,timeCheck* elem){
+	if(elem==NULL)return -1;
+	if(*list_head==NULL){
+		*list_head=elem;
+		*list_tail=elem;
+		elem->next=NULL;
+		elem->prev=NULL;
+		return 0;
+	}
+	(*list_tail)->next=elem;
+	elem->prev=(*list_tail);
+	elem->next=NULL;
+	(*list_tail)=elem;
+	return 0;
+}
+/*
+ * pre: list_head != null
+ * renvoie la valeur timestamp du plus ancien élement du buffer
+ */
+uint32_t get_head_timestamp(timeCheck ** list_head){
+	return(*list_head)->timestamp;
+}
+/*
+ * pre: list_head != null
+ * renvoie la valeur seqnum du plus ancien élement du buffer
+ */
+uint8_t get_head_seqnum(timeCheck **list_head){
+	return (*list_head)->seqnum;
 }
 
 
