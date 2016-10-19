@@ -178,8 +178,6 @@ void test_pkt_decode(void) {
 	
 	type = pkt_decode(buffer, (size_t) 8, pkt2);
 	
-	CU_ASSERT_EQUAL(type, (ptypes_t) E_NOPAYLOAD);
-	
 	pkt_del(pkt);
 	pkt_del(pkt2);
 		

@@ -11,17 +11,6 @@
 /* Extra #includes */
 /* Des spec plus précises sont dispo dans packet_interface.h */
 
-struct __attribute__((__packed__)) pkt {
-  	ptypes_t type : 3;
-  	uint8_t window : 5;
-	uint8_t seq;
-  	uint16_t length;
-    uint32_t timestamp;
-	char* payload;
-	uint32_t crc;
-};
-
-  
 /* Extra code */
 /* Your code will be inserted here */
 

@@ -9,18 +9,14 @@
 #include <stdint.h> /* uintx_t */
 #include <signal.h>
 #include <time.h>
+#include <string.h>
 #include "packet_interface.h"
 #include "read_write_sender.h"
 #define PKT_MAX_PAYLOAD 512
-typedef struct timeCheck{
-	uint8_t seqnum;
-	uint32_t timestamp;
-	struct timeCheck* next;
-	struct timeCheck* prev;
-}timeCheck;
 int window = 31; // Window size
 uint8_t seq_eof; 
-int eof_ack = 0; 
+int eof_ack = 0;
+struct timeval rtt;
 
 int wait_for_ack = 1;
 
@@ -47,17 +43,20 @@ int max(int a, int b) {
  * @return: as soon as stdin signals EOF
  */
 void read_write_sender(const int sfd, const int fd){
-
+    rtt.tv_usec=0;
 	int window_flag = 1; // Sets to 0 when window runs out of free slots
 	fd_set read_fd;
 	int eof = 0;
 	int err;
+    //TODO varibale buf timeCheck
+    //int time_err;
 	ssize_t size;
 	char* message = (char*) malloc(sizeof(char)*PKT_MAX_PAYLOAD+12);
 	uint8_t seqnum = 0;
 	last_ack = 0;
 	FD_ZERO(&read_fd);
 	while(!eof || !eof_ack){
+        check_time_out(&timeCheck_head,&timeCheck_tail,&buffer_head,&buffer_tail,sfd);
 		fflush(stdout);
 		FD_ZERO(&read_fd);
 		FD_SET(sfd, &read_fd);
@@ -117,7 +116,11 @@ void read_write_sender(const int sfd, const int fd){
 						last_ack = rseq;
 
 						pkt_t *pkt_pop = pop_s(&buffer_head, &buffer_tail, rseq);
-
+                        // TODO ligne time out
+                        /*
+                        time_err=remove_from_buffer(&timeCheck_head,&timeCheck_tail,rseq);
+                        if(time_err!=0)printf("Erreur dans le remove du buffer timecheck (ligne 126 \n");
+                         */
 						while(pkt_pop != NULL){
 							buffer_items --;
 							window_flag = 1;
@@ -227,6 +230,13 @@ void read_write_sender(const int sfd, const int fd){
 						fprintf(stderr, "Error buffering packet\n");
 						break;
 					}
+                    //TODO Push dans le buffe timecheck
+                    /*
+                    perr=push_time_check(&timeCheck_head,&timeCheck_tail,p);
+                    if(perr == -1){
+                        fprintf(stderr, "Error buffering packet\n");
+                        break;
+                    }*/
 					buffer_items ++;
 
 					// Last buffer slot is used, setting appropriate flag
@@ -248,12 +258,13 @@ void read_write_sender(const int sfd, const int fd){
 /*
  * crée une nouvelle structure timeCheck et initialise les champs a timestamp et seqnum
  */
-timeCheck* init(uint32_t timeStamp, uint8_t seqnum){
-	timeCheck* new=(timeCheck*)malloc(sizeof(timeCheck));
-	if(new==NULL)return NULL;
-	new->seqnum=seqnum;
-	new->timestamp=timeStamp;
-	return new;
+timeCheck* init(pkt_t* pkt){
+	timeCheck* newCheck=(timeCheck*)malloc(sizeof(timeCheck));
+    if(newCheck==NULL)return NULL;
+    newCheck->pkt=pkt_new();
+    if(newCheck->pkt==NULL)return NULL;
+	newCheck->pkt=memcpy(newCheck->pkt,pkt,sizeof(pkt_t));
+	return newCheck;
 }
 /*
  * retire l'élément timeCheck possédant le numéro de séquence seq_wanted
@@ -264,7 +275,7 @@ int remove_from_buffer(timeCheck **list_head,timeCheck **list_tail, uint8_t seq_
 	timeCheck* iter=*list_head;//on initialise le pointeur qui va nous permettre de parcourir la liste
 	if(iter==NULL)return -1;
 	while(iter->next!=NULL){
-		if(seq_wanted==iter->seqnum){
+		if(seq_wanted>=pkt_get_seqnum((const pkt_t*)iter->pkt)){
 			if(iter->prev!=NULL)iter->prev->next=iter->next;
 			iter->next->prev=iter->prev;
 			free(iter);
@@ -272,7 +283,7 @@ int remove_from_buffer(timeCheck **list_head,timeCheck **list_tail, uint8_t seq_
 		}
 		iter=iter->next;
 	}
-	if(seq_wanted==iter->seqnum){
+	if(seq_wanted==pkt_get_seqnum((const pkt_t*)iter->pkt)){
 		if((*list_head)==(*list_tail)){
 			*list_head=NULL;
 			*list_tail=NULL;
@@ -289,8 +300,9 @@ int remove_from_buffer(timeCheck **list_head,timeCheck **list_tail, uint8_t seq_
  * ajoute un l'élément elem au buffer de timeCheck
  * retourne 0 en cas de succès et -1 si elem pointe vers NULL
  */
-int push_time_check(timeCheck **list_head,timeCheck **list_tail,timeCheck* elem){
-	if(elem==NULL)return -1;
+int push_time_check(timeCheck **list_head,timeCheck **list_tail,pkt_t* pkt){
+	if(pkt==NULL)return -1;
+    timeCheck* elem=init(pkt);
 	if(*list_head==NULL){
 		*list_head=elem;
 		*list_tail=elem;
@@ -309,40 +321,83 @@ int push_time_check(timeCheck **list_head,timeCheck **list_tail,timeCheck* elem)
  * renvoie la valeur timestamp du plus ancien élement du buffer
  */
 uint32_t get_head_timestamp(timeCheck ** list_head){
-	return(*list_head)->timestamp;
+	return pkt_get_timestamp((*list_head)->pkt);
 }
 /*
  * pre: list_head != null
  * renvoie la valeur seqnum du plus ancien élement du buffer
  */
 uint8_t get_head_seqnum(timeCheck **list_head){
-	return (*list_head)->seqnum;
+	return pkt_get_seqnum((*list_head)->pkt);
 }
 /*
  * set elem->timestamp à timestamp
  */
-int set__timeCheck_timestamp(timeCheck* elem, uint32_t timestamp){
-    if(elem==NULL)return -1;
-    elem->timestamp=timestamp;
-    return 0;
+pkt_status_code set__timeCheck_timestamp(timeCheck* elem, uint32_t timestamp){
+    pkt_status_code err;
+    if(elem==NULL)return E_UNCONSISTENT;
+    err=pkt_set_timestamp(elem->pkt,timestamp);
+    return err;
 }
 /*
  *renvoie tout les paquets qui ont time out et renvoie 0 si tout a bien été, retourne -1 en cas d'erreur
  */
-int check_time_out(timeCheck** list_head, timeCheck** list_tail,uint32_t currentTime){
+int check_time_out(timeCheck** list_head, timeCheck** list_tail,pkt_t_node** buff_head,pkt_t_node** buff_tail,int sfd){
     timeCheck* iter=*list_head;//on initialise le pointeur qui va nous permettre de parcourir la liste
-    if(iter==NULL)return -1;
+    if(iter==NULL||buff_head==NULL)return 0;
     uint32_t timestamp;
+    int err;
+    ssize_t size;
+    char* message = (char*) malloc(sizeof(char)*PKT_MAX_PAYLOAD+12);
     while(iter->next!=NULL){
-        timestamp=iter->timestamp;
-        if((currentTime-timestamp)/CLOCKS_PER_SEC>=2){
+        timestamp=pkt_get_timestamp(iter->pkt);
+        if((clock()-timestamp)/(1000*CLOCKS_PER_SEC)>=rtt.tv_usec){
+            pop_s(buff_head,buff_tail,pkt_get_seqnum(iter->pkt));
             //TODO On renvoit le paquet et on met le timestamp a jour
+            pkt_set_timestamp(iter->pkt,clock());
+            pkt_status_code status = pkt_encode(iter->pkt, message, (size_t*)&size);
+            if(status != PKT_OK){
+                fprintf(stderr, "Encoding failed (status code %d)\n", status);
+                break;
+            }
+            // Envoi du paquet sur le socket
+            err = write(sfd, (void*) message, size);
+            printf("sizeOfMessage %zu \n",sizeof(message));
+            printf("err= %d \n",err);
+            if(err == -1){
+                perror("write");
+                break;
+            }
+            // Mise en buffer du paquet envoyé
+            int perr = push(&buffer_tail, &buffer_head, iter->pkt);
+            if(perr == -1){
+                fprintf(stderr, "Error buffering packet\n");
+                break;
+            }
         }
         iter=iter->next;
     }
-    timestamp=iter->timestamp;
-    if(currentTime-timestamp>=2){
+    timestamp=pkt_get_timestamp(iter->pkt);
+    if(clock()-timestamp>=rtt.tv_usec){
+        pop_s(buff_head,buff_tail,pkt_get_seqnum(iter->pkt));
         //TODO On renvoit le paquet et on met le timestamp a jour
+        pkt_set_timestamp(iter->pkt,clock());
+        pkt_status_code status = pkt_encode(iter->pkt, message, (size_t*)&size);
+        if(status != PKT_OK){
+            fprintf(stderr, "Encoding failed (status code %d)\n", status);
+        }
+        // Envoi du paquet sur le socket
+        err = write(sfd, (void*) message, size);
+        printf("sizeOfMessage %zu \n",sizeof(message));
+        printf("err= %d \n",err);
+        if(err == -1){
+            perror("write");
+        }
+        // Mise en buffer du paquet envoyé
+        int perr = push(&buffer_tail, &buffer_head, iter->pkt);
+        if(perr == -1) {
+            fprintf(stderr, "Error buffering packet\n");
+        }
     }
     return 0;
 }
