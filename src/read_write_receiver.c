@@ -44,66 +44,40 @@ size_t read_buf(const int sfd, char *buffer, const size_t buf_length) {
 
 int send_ack(const int sfd, const ptypes_t ptype) {
 
-	if(ptype != PTYPE_ACK && ptype != PTYPE_NACK) {
+	if(ptype != PTYPE_ACK) {
 		return E_TYPE;	
 	}
-  char* message = (char*) malloc(sizeof(char)*PKT_MAX_PAYLOAD);
-  pkt_t* pkt = pkt_new();
-  if(pkt == NULL){
-    perror("malloc");
-    return E_NOMEM;
-  }
-  size_t size = 0;
-  int err;
-
-  if(ptype == PTYPE_NACK) {
-	  uint8_t mod = window_max % 2;
-	  last_congestion = window_max;
-	  if(mod != 0) {
-		  window_max = window_max - mod;
-	  }
-
-	  //Si congestion, on divise la window en deux
-	  window_max = window_max/2; 
-	  
-	  //Si trop de packet dans le buffer par rapport à la nouvelle window max, la window max prend la valeur
-	  //du nombre de pkt dans le buffer et window_actual est donc mis à 0 
-	  if(last_congestion - window_actual > window_max) {
-		  window_max = last_congestion - window_actual;
-		  window_actual = 0; 
-		
-	  }
-	  
-	  //Calcul de la nouvelle window_actual
-	  else {
- 
-		window_actual = window_max - (last_congestion - window_actual);
-	  }  
-  }
-	//Lorsqu'on envoie un ack, on augmente la taille max de la window de 1
-	// jusqu'en dessous	de la dernière valeur ou il y a eu congestion 
-	if(ptype == PTYPE_ACK && window_max < last_congestion - 1) {
-		window_max = window_max + 1;
-		window_actual = window_actual + 1; 
+	char* message = (char*) malloc(sizeof(char)*PKT_MAX_PAYLOAD);
+	pkt_t* pkt = pkt_new();
+	if(pkt == NULL){
+	perror("malloc");
+	return E_NOMEM;
 	}
-  err = pkt_set_type(pkt, ptype);
-  if(err != PKT_OK) fprintf(stderr, "Send_ack : erreur de set_type\n");
-  pkt_set_window(pkt, (uint8_t) window_actual);
-  if(err != PKT_OK) fprintf(stderr, "Send_ack : erreur de set_window\n");
-  pkt_set_length(pkt, (uint16_t) size);
-  if(err != PKT_OK) fprintf(stderr, "Send_ack : erreur de set_length\n");
-  pkt_set_payload(pkt, NULL, (uint16_t)size);
-  if(err != PKT_OK) fprintf(stderr, "Send_ack : erreur de set_payload\n");
-  pkt_set_seqnum(pkt, seq_actual);
-  if(err != PKT_OK) fprintf(stderr, "Send_ack : erreur de set_seqnum\n");
-  size = 524;
+	size_t size = 0;
+	pkt_status_code err;
 
-  pkt_encode(pkt, message, (size_t*)&size);				
-  err = write(sfd, (void*) message, size);
+
+	err = pkt_set_type(pkt, ptype);
+	if(err != PKT_OK) fprintf(stderr, "Send_ack : erreur de set_type\n");
+	err = pkt_set_window(pkt, (uint8_t) window_actual);
+	if(err != PKT_OK) fprintf(stderr, "Send_ack : erreur de set_window\n");
+	err = pkt_set_length(pkt, (uint16_t) size);
+	if(err != PKT_OK) fprintf(stderr, "Send_ack : erreur de set_length\n");
+	err = pkt_set_timestamp(pkt, (const uint32_t) clock());
+	if(err != PKT_OK) fprintf(stderr, "Send_ack : erreur de set_timestamp\n");
+	err = pkt_set_payload(pkt, NULL, (uint16_t)size);
+	if(err != PKT_OK) fprintf(stderr, "Send_ack : erreur de set_payload\n");
+	err = pkt_set_seqnum(pkt, seq_actual);
+	if(err != PKT_OK) fprintf(stderr, "Send_ack : erreur de set_seqnum\n");
+	size = 524;
+
+	pkt_encode(pkt, message, (size_t*)&size);
+				
+	err = write(sfd, (void*) message, size);
 	if(err<0) { 
 		perror("Write");
 		return -1 ;
-}
+	}
 	free(message);
 	pkt_del(pkt);
 	return 0;
@@ -125,11 +99,13 @@ pkt_status_code write_buf(const int sfd, pkt_t *pkt, pkt_t_node **list_head,  pk
     	return E_SEQNUM;
     }
     // C'est le bon packet 
+//printf("Seq & actual : %d & %d\n", pkt_get_seqnum(pkt), seq_actual);
     if(pkt_get_seqnum(pkt) == seq_actual) {
 
       //ecriture sur le stdout
 	  //on vide la pile jusqu'à ce qu'on atteigne la fin de la liste, on envoie un ack avec le num de packet attendu.
       
+//printf("Pkt_get_len : %d\n", pkt_get_length(pkt));
 	  err = write(fd, (void*) pkt_get_payload(pkt), pkt_get_length(pkt));
       if(err < 0) fprintf(stderr, "write_buf : write stdout\n");
       if(err == -1) perror("write");

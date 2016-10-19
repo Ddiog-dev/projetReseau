@@ -107,9 +107,6 @@ void read_write_sender(const int sfd, const int fd){
 						while(pkt_pop != NULL){
 							buffer_items --;
 							window_flag = 1;
-
-	// TODO This call segfaults; but why?
-	// TODO Memleaks inside
 							pkt_del(pkt_pop);
 
 							pkt_pop = pop_s(&buffer_head, &buffer_tail, rseq);
@@ -183,6 +180,9 @@ void read_write_sender(const int sfd, const int fd){
 					}
 					if(pkt_set_length(p, (uint16_t)size) != PKT_OK){
 						fprintf(stderr, "error in pkt_set_length()\n");
+					}
+					if(pkt_set_timestamp(p, (const uint32_t) 0x0fffffff) != PKT_OK){
+						fprintf(stderr, "error in pkt_set_timestamp\n");
 					}
 					if(pkt_set_payload(p, message, (uint16_t)size)!= PKT_OK){
 						fprintf(stderr, "error in pkt_set_payload()\n");

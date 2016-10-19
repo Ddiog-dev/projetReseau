@@ -5,6 +5,7 @@
 #include <zlib.h>
 #include <endian.h>
 #include <inttypes.h>
+#include <arpa/inet.h>
 
 
 /* Extra #includes */
@@ -28,6 +29,7 @@ struct __attribute__((__packed__)) pkt {
 // Error case?
 pkt_t* pkt_new(){
 	pkt_t* pkt = (pkt_t*) malloc(sizeof(pkt_t));
+	if(pkt == NULL) return NULL;
 	return pkt;
 }
 
@@ -43,15 +45,16 @@ pkt_status_code pkt_decode(const char *data, const size_t len, pkt_t *pkt){
 	if(len <= 8) {
 		return E_NOHEADER;
 	}
-	//size_t payload_size;
+	if(len == 8){ // Truc bizarre
+
+		return E_LENGTH;
+	}
+
 
 	memcpy(&pkt->seq, data+1, 1);
 	memcpy(&pkt->length, data+2, 2);
     memcpy(&pkt->timestamp, data+4, 4);
-	pkt->length = be16toh(pkt->length);
-
-
-	//payload_size = pkt->length;	
+	pkt->length = ntohs(pkt->length);
 	
 
 
@@ -66,9 +69,9 @@ pkt_status_code pkt_decode(const char *data, const size_t len, pkt_t *pkt){
 	uint32_t crc1 = crc32(0L, (const unsigned char*) data, len-4);
 	uint32_t crc2;
 	memcpy(&crc2, &data[len-4], sizeof(uint32_t));
-	crc2 = be32toh(crc2);
+	crc2 = ntohl(crc2);
 	if(crc1 != crc2){
-printf("%"PRIu32" vs %"PRIu32"\n", crc1, crc2);
+		printf("%"PRIu32" vs %"PRIu32"\n", crc1, crc2);
 		return E_CRC;
 	}
 
@@ -113,7 +116,7 @@ pkt_status_code pkt_encode(const pkt_t* pkt, char *buf, size_t *len){
 	*buf = b;
 
 
-	// 3. cat seq
+	// 3. cat seq (1 byte)
 	uint8_t seq = pkt->seq;
 	b = seq;
 	*(buf+1) = b;
@@ -128,13 +131,12 @@ pkt_status_code pkt_encode(const pkt_t* pkt, char *buf, size_t *len){
 	else {
 	  length = 0;
 	}
-	length = htobe16(length);
+	length = htons(length);
 	memcpy(buf+2, &length, (size_t) 2); // copy length
     
     // 4.5 cat timestamp (4 bytes)
 	
     uint32_t timestamp = pkt->timestamp;
-    //timestamp = htobe32(timestamp);
     memcpy(buf+4, &timestamp, (size_t) 4); // Copy timestamp
 
 	// 5. payload
@@ -147,7 +149,8 @@ pkt_status_code pkt_encode(const pkt_t* pkt, char *buf, size_t *len){
 
 	uLong crc = crc32(0L, (unsigned char*) buf, (size_t) payload_size + header_size);
     char *a = (char*) malloc(sizeof(char) *4);
-	crc = htobe32(crc);
+	if(a == NULL) return E_NOMEM;
+	crc = htonl(crc);
 	memcpy(a, &crc, 4);
 
 	memcpy(buf + payload_size + header_size, a, (size_t) 4);
@@ -212,6 +215,7 @@ pkt_status_code pkt_set_crc(pkt_t *pkt, const uint32_t crc){
 pkt_status_code pkt_set_payload(pkt_t *pkt, const char *data, const uint16_t length){
 
   pkt -> payload  = (char*) malloc(sizeof(char) * length);
+	if(pkt->payload == NULL) return E_NOMEM;
 
   memcpy(pkt->payload, data, length);
   

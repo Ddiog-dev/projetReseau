@@ -34,7 +34,9 @@ int main(int argc, char ** argv){
 	
 	int port;
 	char* host = (char *) malloc(1024);
+	if(host == NULL) return 1;
 	char* filename = (char*) malloc(1024);
+	if(filename == NULL) return 1;
 	
 	int i =1;
 	int host_ok = 0; 
@@ -92,13 +94,16 @@ int main(int argc, char ** argv){
 
 	//Création du buffer
 	char *buffer = (char*) malloc(sizeof(char)*MSG_LEN);
+	if(buffer == NULL) return 1;
 	size_t length_buf = MSG_LEN;
 	pkt_status_code pkt_stat;
 
 
 	pkt_t_node **list_head = (pkt_t_node **) malloc(sizeof(pkt_t_node**)); 
+	if(list_head == NULL) return 1;
 	*list_head = NULL;
 	pkt_t_node **list_tail = (pkt_t_node **) malloc(sizeof(pkt_t_node**));
+	if(list_tail == NULL) return 1;
 	*list_tail = NULL;
 	
 	window_max = WINDOW_MAX;
@@ -147,6 +152,7 @@ int main(int argc, char ** argv){
 	 
 	
 	  if(!eof) {
+//printf("Ici dans le if \n");
 		//Si CRC ne correspondent pas ou pas de header, envoie un ptype_ack 
 		if(pkt_stat == E_CRC || pkt_stat == E_NOHEADER || pkt_stat == E_TYPE || pkt_stat == E_WINDOW) {
 			if(pkt_stat == E_NOHEADER) fprintf(stderr, "decode : pas de header\n");
@@ -157,8 +163,8 @@ int main(int argc, char ** argv){
 			if(err2 == E_NOMEM) fprintf(stderr, "send_ack : erreur de mémoire\n");
 			if(err2 == E_TYPE) fprintf(stderr, "send_ack : erreur de type de packet reçu\n"); 
 		}
-
-
+		
+		send_ack(sfd, PTYPE_ACK);
 		//Le packet décodé est valide, écriture sur la sortie ou bien dans la pile SI fenêtre correspond 
 		if(pkt_stat == PKT_OK) {
 			err2 = write_buf(sfd ,pkt, list_head,  list_tail);
@@ -186,10 +192,6 @@ int main(int argc, char ** argv){
 	free(buffer);
 	free(host);
 	free(filename);
-	
-	int time = clock();
-	
-	while((clock() - time)/CLOCKS_PER_SEC < 1){ }
 	
 	//Fermeture du socket
 	err2 = close(sfd);
