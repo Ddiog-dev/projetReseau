@@ -39,7 +39,7 @@ SOFTWARE.
 #include "min_queue.h" /* minq_x */
 
 /* Max packet length in the protocol */
-#define MAX_PKT_LEN 520
+#define MAX_PKT_LEN 524
 /* Random number between 0 and 100 */
 #define RAND_PERCENT ((unsigned int)(rand() % 101))
 

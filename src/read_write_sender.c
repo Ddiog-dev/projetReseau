@@ -215,6 +215,8 @@ void read_write_sender(const int sfd, const int fd){
 					}
 					// Envoi du paquet sur le socket
 					err = write(sfd, (void*) message, size);
+                    printf("sizeOfMessage %zu \n",sizeof(message));
+                    printf("err= %d \n",err);
 					if(err == -1){
 						perror("write");
 						break;
@@ -316,5 +318,31 @@ uint32_t get_head_timestamp(timeCheck ** list_head){
 uint8_t get_head_seqnum(timeCheck **list_head){
 	return (*list_head)->seqnum;
 }
-
-
+/*
+ * set elem->timestamp à timestamp
+ */
+int set__timeCheck_timestamp(timeCheck* elem, uint32_t timestamp){
+    if(elem==NULL)return -1;
+    elem->timestamp=timestamp;
+    return 0;
+}
+/*
+ *renvoie tout les paquets qui ont time out et renvoie 0 si tout a bien été, retourne -1 en cas d'erreur
+ */
+int check_time_out(timeCheck** list_head, timeCheck** list_tail,uint32_t currentTime){
+    timeCheck* iter=*list_head;//on initialise le pointeur qui va nous permettre de parcourir la liste
+    if(iter==NULL)return -1;
+    uint32_t timestamp;
+    while(iter->next!=NULL){
+        timestamp=iter->timestamp;
+        if((currentTime-timestamp)/CLOCKS_PER_SEC>=2){
+            //TODO On renvoit le paquet et on met le timestamp a jour
+        }
+        iter=iter->next;
+    }
+    timestamp=iter->timestamp;
+    if(currentTime-timestamp>=2){
+        //TODO On renvoit le paquet et on met le timestamp a jour
+    }
+    return 0;
+}

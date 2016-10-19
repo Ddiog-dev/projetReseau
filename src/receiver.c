@@ -121,7 +121,7 @@ int main(int argc, char ** argv){
 		
 	  //Lecture du socket en attendant que quelques chose arrive 
 	  size_t size_read = read_buf(sfd, buffer, length_buf);
-	  
+	  printf("sizeread=%zu \n",size_read);
 
 	  //Création d'un nouveau packet
 	  pkt_t *pkt = pkt_new();
