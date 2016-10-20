@@ -45,19 +45,12 @@ pkt_status_code pkt_decode(const char *data, const size_t len, pkt_t *pkt){
 	if(len <= 8) {
 		return E_NOHEADER;
 	}
-<<<<<<< HEAD
+
 	if(len == 8){ // Truc bizarre
 
 		return E_LENGTH;
 	}
 
-
-=======
-	//size_t payload_size;
-    if(len==8){
-        return E_NOPAYLOAD;
-    }
->>>>>>> 1369fba1e9eba148f5304614284f2b7920a8c0e4
 	memcpy(&pkt->seq, data+1, 1);
 	memcpy(&pkt->length, data+2, 2);
     memcpy(&pkt->timestamp, data+4, 4);
