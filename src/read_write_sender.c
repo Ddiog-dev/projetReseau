@@ -43,13 +43,13 @@ int max(int a, int b) {
  * @return: as soon as stdin signals EOF
  */
 void read_write_sender(const int sfd, const int fd){
-    rtt.tv_usec=0;
+    rtt.tv_usec=500000;
 	int window_flag = 1; // Sets to 0 when window runs out of free slots
 	fd_set read_fd;
 	int eof = 0;
 	int err;
     //TODO varibale buf timeCheck
-    //int time_err;
+    int time_err;
 	ssize_t size;
 	char* message = (char*) malloc(sizeof(char)*PKT_MAX_PAYLOAD+12);
 	uint8_t seqnum = 0;
@@ -117,17 +117,18 @@ void read_write_sender(const int sfd, const int fd){
 
 						pkt_t *pkt_pop = pop_s(&buffer_head, &buffer_tail, rseq);
                         // TODO ligne time out
-                        /*
+
                         time_err=remove_from_buffer(&timeCheck_head,&timeCheck_tail,rseq);
                         if(time_err!=0)printf("Erreur dans le remove du buffer timecheck (ligne 126 \n");
-                         */
+
 						while(pkt_pop != NULL){
 							buffer_items --;
 							window_flag = 1;
 							pkt_del(pkt_pop);
-
+                            //TODO ligne time out
 							pkt_pop = pop_s(&buffer_head, &buffer_tail, rseq);
-
+                            time_err=remove_from_buffer(&timeCheck_head,&timeCheck_tail,rseq);
+                            if(time_err!=0)printf("Erreur dans le remove du buffer timecheck (ligne 126 \n");
 						};
 						pkt_del(pkt);
 						if(is_in_buffer(&buffer_head, &buffer_tail, rseq +1) && eof){
@@ -231,12 +232,11 @@ void read_write_sender(const int sfd, const int fd){
 						break;
 					}
                     //TODO Push dans le buffe timecheck
-                    /*
                     perr=push_time_check(&timeCheck_head,&timeCheck_tail,p);
                     if(perr == -1){
                         fprintf(stderr, "Error buffering packet\n");
                         break;
-                    }*/
+                    }
 					buffer_items ++;
 
 					// Last buffer slot is used, setting appropriate flag
@@ -273,6 +273,7 @@ timeCheck* init(pkt_t* pkt){
 int remove_from_buffer(timeCheck **list_head,timeCheck **list_tail, uint8_t seq_wanted){
 
 	timeCheck* iter=*list_head;//on initialise le pointeur qui va nous permettre de parcourir la liste
+    printf("remove 1 \n");
 	if(iter==NULL)return -1;
 	while(iter->next!=NULL){
 		if(seq_wanted>=pkt_get_seqnum((const pkt_t*)iter->pkt)){
@@ -283,17 +284,22 @@ int remove_from_buffer(timeCheck **list_head,timeCheck **list_tail, uint8_t seq_
 		}
 		iter=iter->next;
 	}
-	if(seq_wanted==pkt_get_seqnum((const pkt_t*)iter->pkt)){
+    printf("remove 2 \n");
+	if(seq_wanted>=pkt_get_seqnum((const pkt_t*)iter->pkt)){
 		if((*list_head)==(*list_tail)){
 			*list_head=NULL;
 			*list_tail=NULL;
 			free(iter);
+            printf("remove 2.1 \n");
 			return 0;
+
 		}
+        printf("remove 2.2 \n");
 		iter->prev->next=NULL;
 		free(iter);
 		return 0;
 	}
+    printf("remove 3 \n");
 	return 1;
 }
 /*
@@ -301,19 +307,24 @@ int remove_from_buffer(timeCheck **list_head,timeCheck **list_tail, uint8_t seq_
  * retourne 0 en cas de succès et -1 si elem pointe vers NULL
  */
 int push_time_check(timeCheck **list_head,timeCheck **list_tail,pkt_t* pkt){
+    printf("push 1 \n");
 	if(pkt==NULL)return -1;
     timeCheck* elem=init(pkt);
+    printf("push 2 \n");
 	if(*list_head==NULL){
 		*list_head=elem;
 		*list_tail=elem;
 		elem->next=NULL;
 		elem->prev=NULL;
+        printf("push 2.5 \n");
 		return 0;
 	}
+    printf("push 3 \n");
 	(*list_tail)->next=elem;
 	elem->prev=(*list_tail);
 	elem->next=NULL;
 	(*list_tail)=elem;
+    printf("push 4 \n");
 	return 0;
 }
 /*
@@ -343,15 +354,19 @@ pkt_status_code set__timeCheck_timestamp(timeCheck* elem, uint32_t timestamp){
  *renvoie tout les paquets qui ont time out et renvoie 0 si tout a bien été, retourne -1 en cas d'erreur
  */
 int check_time_out(timeCheck** list_head, timeCheck** list_tail,pkt_t_node** buff_head,pkt_t_node** buff_tail,int sfd){
+    printf("checkTimeOut 1 \n");
     timeCheck* iter=*list_head;//on initialise le pointeur qui va nous permettre de parcourir la liste
     if(iter==NULL||buff_head==NULL)return 0;
     uint32_t timestamp;
+    printf("checkTimeOut 2 \n");
     int err;
     ssize_t size;
     char* message = (char*) malloc(sizeof(char)*PKT_MAX_PAYLOAD+12);
     while(iter->next!=NULL){
+        printf("checkTimeOut 3 \n");
         timestamp=pkt_get_timestamp(iter->pkt);
         if((clock()-timestamp)/(1000*CLOCKS_PER_SEC)>=rtt.tv_usec){
+            printf("checkTimeOut 4 \n");
             pop_s(buff_head,buff_tail,pkt_get_seqnum(iter->pkt));
             //TODO On renvoit le paquet et on met le timestamp a jour
             pkt_set_timestamp(iter->pkt,clock());
@@ -360,6 +375,7 @@ int check_time_out(timeCheck** list_head, timeCheck** list_tail,pkt_t_node** buf
                 fprintf(stderr, "Encoding failed (status code %d)\n", status);
                 break;
             }
+            printf("checkTimeOut 5 \n");
             // Envoi du paquet sur le socket
             err = write(sfd, (void*) message, size);
             printf("sizeOfMessage %zu \n",sizeof(message));
@@ -368,6 +384,7 @@ int check_time_out(timeCheck** list_head, timeCheck** list_tail,pkt_t_node** buf
                 perror("write");
                 break;
             }
+            printf("checkTimeOut 6 \n");
             // Mise en buffer du paquet envoyé
             int perr = push(&buffer_tail, &buffer_head, iter->pkt);
             if(perr == -1){
@@ -379,6 +396,7 @@ int check_time_out(timeCheck** list_head, timeCheck** list_tail,pkt_t_node** buf
     }
     timestamp=pkt_get_timestamp(iter->pkt);
     if(clock()-timestamp>=rtt.tv_usec){
+        printf("checkTimeOut 7 \n");
         pop_s(buff_head,buff_tail,pkt_get_seqnum(iter->pkt));
         //TODO On renvoit le paquet et on met le timestamp a jour
         pkt_set_timestamp(iter->pkt,clock());
@@ -386,6 +404,7 @@ int check_time_out(timeCheck** list_head, timeCheck** list_tail,pkt_t_node** buf
         if(status != PKT_OK){
             fprintf(stderr, "Encoding failed (status code %d)\n", status);
         }
+        printf("checkTimeOut 8 \n");
         // Envoi du paquet sur le socket
         err = write(sfd, (void*) message, size);
         printf("sizeOfMessage %zu \n",sizeof(message));
@@ -393,11 +412,13 @@ int check_time_out(timeCheck** list_head, timeCheck** list_tail,pkt_t_node** buf
         if(err == -1){
             perror("write");
         }
+        printf("checkTimeOut 9 \n");
         // Mise en buffer du paquet envoyé
         int perr = push(&buffer_tail, &buffer_head, iter->pkt);
         if(perr == -1) {
             fprintf(stderr, "Error buffering packet\n");
         }
     }
+    printf("checkTimeOut 10 \n");
     return 0;
 }

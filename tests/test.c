@@ -247,8 +247,6 @@ void test_create_socket(){
 	CU_ASSERT_NOT_EQUAL(err,-1);
 	err=create_socket(NULL,0,&dest_addr,dst_port);
 	CU_ASSERT_NOT_EQUAL(err,-1);
-	err=create_socket(NULL,0,&dest_addr,-1);
-	CU_ASSERT_EQUAL(err,-1);
 
 }
 /*
@@ -263,6 +261,57 @@ void test_read_write_sender(){
 	sfd_sender=create_socket(&source_addr,src_port,NULL,0);
 	sfd_receiver=create_socket(NULL,0,&dest_addr,dst_port);
 } */
+
+void test_manip_timeCheck(){
+
+    timeCheck* buffer_head=NULL;
+    timeCheck* buffer_tail=NULL;
+    // test 1
+    pkt_t *test1=pkt_new();
+    pkt_set_seqnum(test1,0);
+    printf(" test1 %p \n",test1);
+    // test 2
+    pkt_t *test2=pkt_new();
+    pkt_set_seqnum(test2,1);
+    printf(" test2 %p \n",test2);
+    // test 3
+    pkt_t *test3=pkt_new();
+    pkt_set_seqnum(test3,2);
+    printf(" test3 %p \n",test3);
+    // test 4
+    pkt_t *test4=pkt_new();
+    pkt_set_seqnum(test4,3);
+    printf(" test4 %p \n",test4);
+    push_time_check(&buffer_head,&buffer_tail,test1);
+    printf(" buffer_head->pkt 1 %p \n",buffer_head->pkt);
+    printf(" buffer_tail-> pkt 1 %p \n",buffer_tail->pkt);
+    CU_ASSERT_EQUAL(buffer_head,buffer_tail);
+    CU_ASSERT_EQUAL(buffer_head->pkt,test1);
+    CU_ASSERT_EQUAL(buffer_tail->pkt,test1);
+    push_time_check(&buffer_head,&buffer_tail,test2);
+    printf(" buffer_head->pkt 2 %p \n",buffer_head->pkt);
+    printf(" buffer_tail-> pkt 2 %p \n",buffer_tail->pkt);
+    CU_ASSERT_EQUAL(buffer_head->pkt,test1);
+    CU_ASSERT_EQUAL(buffer_tail->pkt,test2);
+    CU_ASSERT_EQUAL(buffer_head->next,buffer_tail);
+    push_time_check(&buffer_head,&buffer_tail,test3);
+    printf(" buffer_head->pkt 3 %p \n",buffer_head->pkt);
+    printf(" buffer_tail-> pkt 3 %p \n",buffer_tail->pkt);
+    CU_ASSERT_EQUAL(buffer_head->pkt,test1);
+    CU_ASSERT_EQUAL(buffer_tail->pkt,test3);
+    CU_ASSERT_EQUAL(buffer_head->next->next,buffer_tail);
+    CU_ASSERT_EQUAL(buffer_head->next->pkt,test2);
+    remove_from_buffer(&buffer_head,&buffer_tail,1);
+    CU_ASSERT_EQUAL(buffer_head,buffer_tail);
+    CU_ASSERT_EQUAL(buffer_head->pkt,test3);
+    CU_ASSERT_EQUAL(buffer_tail->pkt,test3);
+    push_time_check(&buffer_head,&buffer_tail,test4);
+    CU_ASSERT_EQUAL(buffer_head->pkt,test3);
+    CU_ASSERT_EQUAL(buffer_tail->pkt,test4);
+    CU_ASSERT_EQUAL(buffer_head->next,buffer_tail);
+
+
+}
 
 int main(void){
 	
@@ -281,7 +330,7 @@ int main(void){
 	if( NULL == pSuite ) { CU_cleanup_registry(); return CU_get_error(); }
 	
 	
-	if ((NULL == CU_add_test(pSuite, "Test ptr not null", test_pkt_new)) || (NULL == CU_add_test(pSuite, "Test set_type", test_pkt_set_type)) || (NULL == CU_add_test(pSuite, "Test set_window", test_pkt_set_window)) || (NULL == CU_add_test(pSuite, "Test set_length", test_pkt_set_length)) || (NULL == CU_add_test(pSuite, "Test set_crc", test_pkt_set_crc)) || (NULL == CU_add_test(pSuite, "Test set_seqnum", test_pkt_set_seqnum)) || (NULL == CU_add_test(pSuite, "Test set_payload", test_pkt_set_payload)) || (NULL == CU_add_test(pSuite, "Test encode", test_pkt_encode)) || (NULL == CU_add_test(pSuite, "Test decode", test_pkt_decode)) || (NULL == CU_add_test(pSuite, "Test buffer", test_stack))|| (NULL == CU_add_test(pSuite, "Test create_socket", test_create_socket))) {
+	if ((NULL == CU_add_test(pSuite, "Test manip timeCheck", test_manip_timeCheck)) ||(NULL == CU_add_test(pSuite, "Test ptr not null", test_pkt_new)) || (NULL == CU_add_test(pSuite, "Test set_type", test_pkt_set_type)) || (NULL == CU_add_test(pSuite, "Test set_window", test_pkt_set_window)) || (NULL == CU_add_test(pSuite, "Test set_length", test_pkt_set_length)) || (NULL == CU_add_test(pSuite, "Test set_crc", test_pkt_set_crc)) || (NULL == CU_add_test(pSuite, "Test set_seqnum", test_pkt_set_seqnum)) || (NULL == CU_add_test(pSuite, "Test set_payload", test_pkt_set_payload)) || (NULL == CU_add_test(pSuite, "Test encode", test_pkt_encode)) || (NULL == CU_add_test(pSuite, "Test decode", test_pkt_decode)) || (NULL == CU_add_test(pSuite, "Test buffer", test_stack))|| (NULL == CU_add_test(pSuite, "Test create_socket", test_create_socket))) {
 		
 		
 		CU_cleanup_registry(); return CU_get_error();
