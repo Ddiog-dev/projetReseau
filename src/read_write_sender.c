@@ -43,7 +43,7 @@ int max(int a, int b) {
  * @return: as soon as stdin signals EOF
  */
 void read_write_sender(const int sfd, const int fd){
-    rtt.tv_usec=500000;
+    rtt.tv_usec=5000000;
 	int window_flag = 1; // Sets to 0 when window runs out of free slots
 	fd_set read_fd;
 	int eof = 0;

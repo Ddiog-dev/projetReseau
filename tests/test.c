@@ -302,6 +302,8 @@ void test_manip_timeCheck(){
     CU_ASSERT_EQUAL(buffer_head->next->next,buffer_tail);
     CU_ASSERT_EQUAL(buffer_head->next->pkt,test2);
     remove_from_buffer(&buffer_head,&buffer_tail,1);
+    printf(" buffer_head->pkt 4 %p \n",buffer_head->pkt);
+    printf(" buffer_tail-> pkt 4 %p \n",buffer_tail->pkt);
     CU_ASSERT_EQUAL(buffer_head,buffer_tail);
     CU_ASSERT_EQUAL(buffer_head->pkt,test3);
     CU_ASSERT_EQUAL(buffer_tail->pkt,test3);
