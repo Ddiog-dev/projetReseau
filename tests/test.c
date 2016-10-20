@@ -283,35 +283,36 @@ void test_manip_timeCheck(){
     pkt_set_seqnum(test4,3);
     printf(" test4 %p \n",test4);
     push_time_check(&buffer_head,&buffer_tail,test1);
-    printf(" buffer_head->pkt 1 %p \n",buffer_head->pkt);
-    printf(" buffer_tail-> pkt 1 %p \n",buffer_tail->pkt);
     CU_ASSERT_EQUAL(buffer_head,buffer_tail);
-    CU_ASSERT_EQUAL(buffer_head->pkt,test1);
-    CU_ASSERT_EQUAL(buffer_tail->pkt,test1);
+    CU_ASSERT_EQUAL(buffer_head->pkt->seq,0);
+
     push_time_check(&buffer_head,&buffer_tail,test2);
     printf(" buffer_head->pkt 2 %p \n",buffer_head->pkt);
     printf(" buffer_tail-> pkt 2 %p \n",buffer_tail->pkt);
-    CU_ASSERT_EQUAL(buffer_head->pkt,test1);
-    CU_ASSERT_EQUAL(buffer_tail->pkt,test2);
-    CU_ASSERT_EQUAL(buffer_head->next,buffer_tail);
+    CU_ASSERT_EQUAL(buffer_head->pkt->seq,0);
+    CU_ASSERT_EQUAL(buffer_head->next->pkt->seq,1);
+    CU_ASSERT_EQUAL(buffer_tail->pkt->seq,1);
     push_time_check(&buffer_head,&buffer_tail,test3);
     printf(" buffer_head->pkt 3 %p \n",buffer_head->pkt);
     printf(" buffer_tail-> pkt 3 %p \n",buffer_tail->pkt);
-    CU_ASSERT_EQUAL(buffer_head->pkt,test1);
-    CU_ASSERT_EQUAL(buffer_tail->pkt,test3);
-    CU_ASSERT_EQUAL(buffer_head->next->next,buffer_tail);
-    CU_ASSERT_EQUAL(buffer_head->next->pkt,test2);
+    CU_ASSERT_EQUAL(buffer_head->pkt->seq,0);
+    CU_ASSERT_EQUAL(buffer_head->next->pkt->seq,1);
+    CU_ASSERT_EQUAL(buffer_head->next->next->pkt->seq,2);
+    CU_ASSERT_EQUAL(buffer_tail->pkt->seq,2);
+
     remove_from_buffer(&buffer_head,&buffer_tail,1);
     printf(" buffer_head->pkt 4 %p \n",buffer_head->pkt);
     printf(" buffer_tail-> pkt 4 %p \n",buffer_tail->pkt);
     CU_ASSERT_EQUAL(buffer_head,buffer_tail);
-    CU_ASSERT_EQUAL(buffer_head->pkt,test3);
-    CU_ASSERT_EQUAL(buffer_tail->pkt,test3);
-    push_time_check(&buffer_head,&buffer_tail,test4);
-    CU_ASSERT_EQUAL(buffer_head->pkt,test3);
-    CU_ASSERT_EQUAL(buffer_tail->pkt,test4);
-    CU_ASSERT_EQUAL(buffer_head->next,buffer_tail);
+    CU_ASSERT_EQUAL(buffer_tail->pkt->seq,2);
 
+    push_time_check(&buffer_head,&buffer_tail,test4);
+
+    CU_ASSERT_EQUAL(buffer_head->pkt->seq,2);
+
+    CU_ASSERT_EQUAL(buffer_head->next->pkt->seq,3);
+    printf(" CA VA PETER\n");
+    CU_ASSERT_EQUAL(buffer_tail->pkt->seq,3);
 
 }
 

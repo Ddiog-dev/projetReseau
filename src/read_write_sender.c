@@ -274,13 +274,16 @@ int remove_from_buffer(timeCheck **list_head,timeCheck **list_tail, uint8_t seq_
 
 	timeCheck* iter=*list_head;//on initialise le pointeur qui va nous permettre de parcourir la liste
     printf("remove 1 \n");
+    printf(" pointeur iter= %p\n",iter);
 	if(iter==NULL)return -1;
 	while(iter->next!=NULL){
+        printf(" seq num actu : %i \n",pkt_get_seqnum(iter->pkt));
+        printf("remove 1.2 \n");
 		if(seq_wanted>=pkt_get_seqnum((const pkt_t*)iter->pkt)){
+            if(iter==*list_head)*list_head=iter->next;
 			if(iter->prev!=NULL)iter->prev->next=iter->next;
 			iter->next->prev=iter->prev;
 			free(iter);
-			return 0;
 		}
 		iter=iter->next;
 	}
@@ -300,7 +303,7 @@ int remove_from_buffer(timeCheck **list_head,timeCheck **list_tail, uint8_t seq_
 		return 0;
 	}
     printf("remove 3 \n");
-	return 1;
+	return 0;
 }
 /*
  * ajoute un l'élément elem au buffer de timeCheck
@@ -354,6 +357,8 @@ pkt_status_code set__timeCheck_timestamp(timeCheck* elem, uint32_t timestamp){
  *renvoie tout les paquets qui ont time out et renvoie 0 si tout a bien été, retourne -1 en cas d'erreur
  */
 int check_time_out(timeCheck** list_head, timeCheck** list_tail,pkt_t_node** buff_head,pkt_t_node** buff_tail,int sfd){
+    //TODO changer ca plus tard
+    list_tail=list_tail;
     printf("checkTimeOut 1 \n");
     timeCheck* iter=*list_head;//on initialise le pointeur qui va nous permettre de parcourir la liste
     if(iter==NULL||buff_head==NULL)return 0;
