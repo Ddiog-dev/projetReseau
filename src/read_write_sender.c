@@ -43,7 +43,7 @@ int max(int a, int b) {
  * @return: as soon as stdin signals EOF
  */
 void read_write_sender(const int sfd, const int fd){
-    rtt.tv_usec=5000000;
+    rtt.tv_usec=3;
 	int window_flag = 1; // Sets to 0 when window runs out of free slots
 	fd_set read_fd;
 	int eof = 0;
@@ -347,10 +347,10 @@ uint8_t get_head_seqnum(timeCheck **list_head){
 /*
  * set elem->timestamp à timestamp
  */
-pkt_status_code set__timeCheck_timestamp(timeCheck* elem, uint32_t timestamp){
+pkt_status_code set__timeCheck_timestamp(timeCheck* elem, time_t timestamp){
     pkt_status_code err;
     if(elem==NULL)return E_UNCONSISTENT;
-    err=pkt_set_timestamp(elem->pkt,timestamp);
+    err=pkt_set_timestamp(elem->pkt,(uint32_t)timestamp);
     return err;
 }
 /*
@@ -375,7 +375,7 @@ int check_time_out(timeCheck** list_head, timeCheck** list_tail,pkt_t_node** buf
             printf("checkTimeOut 4 \n");
             pop_s(buff_head,buff_tail,pkt_get_seqnum(iter->pkt));
             //TODO On renvoit le paquet et on met le timestamp a jour
-            pkt_set_timestamp(iter->pkt,time(&now));
+            set__timeCheck_timestamp(iter,time(&now));
             pkt_status_code status = pkt_encode(iter->pkt, message, (size_t*)&size);
             if(status != PKT_OK){
                 fprintf(stderr, "Encoding failed (status code %d)\n", status);

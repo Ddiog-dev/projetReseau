@@ -44,7 +44,7 @@ uint8_t get_head_seqnum(timeCheck **list_head);
 /*
  * set elem->timestamp à timestamp
  */
-pkt_status_code set__timeCheck_timestamp(timeCheck* elem, uint32_t timestamp);
+pkt_status_code set__timeCheck_timestamp(timeCheck* elem, time_t timestamp);
 /*
  *renvoie tout les paquets qui ont time out et renvoie 0 si tout a bien été, retourne -1 en cas d'erreur
  */
