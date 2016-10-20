@@ -358,6 +358,7 @@ pkt_status_code set__timeCheck_timestamp(timeCheck* elem, uint32_t timestamp){
  */
 int check_time_out(timeCheck** list_head, timeCheck** list_tail,pkt_t_node** buff_head,pkt_t_node** buff_tail,int sfd){
     //TODO changer ca plus tard
+    time_t now;
     list_tail=list_tail;
     printf("checkTimeOut 1 \n");
     timeCheck* iter=*list_head;//on initialise le pointeur qui va nous permettre de parcourir la liste
@@ -370,11 +371,11 @@ int check_time_out(timeCheck** list_head, timeCheck** list_tail,pkt_t_node** buf
     while(iter->next!=NULL){
         printf("checkTimeOut 3 \n");
         timestamp=pkt_get_timestamp(iter->pkt);
-        if((clock()-timestamp)/(1000*CLOCKS_PER_SEC)>=rtt.tv_usec){
+        if((time(&now)-timestamp)>=rtt.tv_usec){
             printf("checkTimeOut 4 \n");
             pop_s(buff_head,buff_tail,pkt_get_seqnum(iter->pkt));
             //TODO On renvoit le paquet et on met le timestamp a jour
-            pkt_set_timestamp(iter->pkt,clock());
+            pkt_set_timestamp(iter->pkt,time(&now));
             pkt_status_code status = pkt_encode(iter->pkt, message, (size_t*)&size);
             if(status != PKT_OK){
                 fprintf(stderr, "Encoding failed (status code %d)\n", status);
@@ -400,11 +401,11 @@ int check_time_out(timeCheck** list_head, timeCheck** list_tail,pkt_t_node** buf
         iter=iter->next;
     }
     timestamp=pkt_get_timestamp(iter->pkt);
-    if(clock()-timestamp>=rtt.tv_usec){
+    if(time(&now)-timestamp>=rtt.tv_usec){
         printf("checkTimeOut 7 \n");
         pop_s(buff_head,buff_tail,pkt_get_seqnum(iter->pkt));
         //TODO On renvoit le paquet et on met le timestamp a jour
-        pkt_set_timestamp(iter->pkt,clock());
+        pkt_set_timestamp(iter->pkt,time(&now));
         pkt_status_code status = pkt_encode(iter->pkt, message, (size_t*)&size);
         if(status != PKT_OK){
             fprintf(stderr, "Encoding failed (status code %d)\n", status);
