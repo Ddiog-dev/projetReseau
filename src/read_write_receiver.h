@@ -14,6 +14,8 @@ unsigned int last_congestion;
 uint8_t seq_actual;
 
 
+
+
 /* Lis sur le descripteur de socket sfd et copie le pkt recu dans le buffer 
  * 
  * @pre sfd est un descripteur de socket valide, le pointeur buffer est non null, buf_length est la taille restante sur le buffer 
@@ -46,7 +48,11 @@ pkt_status_code write_buf(const int sfd, pkt_t *pkt, pkt_t_node **list_head,  pk
  * 
  * @post retourne le numéro du descripteur de fichier ou -1 si erreur 
  */
-int open_file(const char* path_name); 
+int open_file(const char* path_name);
+
+/*
+ * crée une nouvelle structure timeCheck et initialise les champs a timestamp et seqnum
+ */
 
 
 

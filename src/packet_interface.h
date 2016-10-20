@@ -25,7 +25,15 @@ typedef enum {
 #define MAX_PAYLOAD_SIZE 512
 /* Maximum allowed window size */
 #define MAX_WINDOW_SIZE 31
-
+struct __attribute__((__packed__)) pkt {
+	ptypes_t type : 3;
+	uint8_t window : 5;
+	uint8_t seq;
+	uint16_t length;
+	uint32_t timestamp;
+	char* payload;
+	uint32_t crc;
+};
 /* Function error code */
 typedef enum {
 	PKT_OK = 0,     /* The packet has been processed successfully */
@@ -85,6 +93,7 @@ uint8_t  pkt_get_window(const pkt_t*);
 uint8_t  pkt_get_seqnum(const pkt_t*);
 uint16_t pkt_get_length(const pkt_t*);
 uint32_t pkt_get_crc   (const pkt_t*);
+uint32_t pkt_get_timestamp(const pkt_t*);
 /* This function must return the full payload of the packet,
  * including the eventual padding bytes. */
 const char* pkt_get_payload(const pkt_t*);
@@ -99,6 +108,7 @@ pkt_status_code pkt_set_seqnum(pkt_t*, const uint8_t seqnum);
 pkt_status_code pkt_set_length(pkt_t*, const uint16_t length);
 pkt_status_code pkt_set_timestamp(pkt_t*, const uint32_t timestamp);
 pkt_status_code pkt_set_crc   (pkt_t*, const uint32_t crc);
+pkt_status_code pkt_set_timestamp(pkt_t *pkt, const uint32_t timestamp);
 /* Set the value of the payload field of the pkt,
  * @data: a byte array that represents the data to store as payload
  * @length: the number of bytes of that byte array. If length is not a multiple

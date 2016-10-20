@@ -9,19 +9,8 @@
 
 
 /* Extra #includes */
-/* Your code will be inserted here */
+/* Des spec plus précises sont dispo dans packet_interface.h */
 
-struct __attribute__((__packed__)) pkt {
-  	ptypes_t type : 3;
-  	uint8_t window : 5;
-	uint8_t seq;
-  	uint16_t length;
-    uint32_t timestamp;
-	char* payload;
-	uint32_t crc;
-};
-
-  
 /* Extra code */
 /* Your code will be inserted here */
 
@@ -161,57 +150,81 @@ pkt_status_code pkt_encode(const pkt_t* pkt, char *buf, size_t *len){
 	*len = payload_size + header_size + 4;
   	return PKT_OK;
 }
-
+/*
+ * retourne la valeur du champ type de pkt
+ */
 ptypes_t pkt_get_type  (const pkt_t* pkt){
 	return pkt->type;
 }
-
+/*
+ * retourne la valeur du champ window de pkt
+ */
 uint8_t  pkt_get_window(const pkt_t* pkt){
 	return pkt->window;
 }
-
+/*
+ * retourne la valeur du champ seqnum de pkt
+ */
 uint8_t  pkt_get_seqnum(const pkt_t* pkt){
 	return pkt->seq;
 }
-
+/*
+ * retourne la valeur du champ length de pkt
+ */
 uint16_t pkt_get_length(const pkt_t* pkt){
 	return pkt->length;
 }
-
+/*
+ * retourne la valeur du champ crc de pkt
+ */
 uint32_t pkt_get_crc   (const pkt_t* pkt){
 	return pkt->crc;
 }
-
+/*
+ * retourne un pointeur vers le payload de pkt
+ */
 const char* pkt_get_payload(const pkt_t* pkt){
 	return pkt->payload;
 }
 
-
+/*
+ * modifie le champ type de pkt avec la valeur fournies en argument
+ */
 pkt_status_code pkt_set_type(pkt_t *pkt, const ptypes_t type){
 	pkt->type = type;
 	return PKT_OK;
 }
-
+/*
+ * modifie le champ window de pkt avec la valeur fournies en argument
+ */
 pkt_status_code pkt_set_window(pkt_t *pkt, const uint8_t window){
 	pkt->window = window;
 	return PKT_OK;
 }
-
+/*
+ * modifie le seqnum type de pkt avec la valeur fournies en argument
+ */
 pkt_status_code pkt_set_seqnum(pkt_t *pkt, const uint8_t seqnum){
 	pkt->seq = seqnum;
 	return PKT_OK;
 }
-
+/*
+ * modifie le champ length de pkt avec la valeur fournies en argument
+ */
 pkt_status_code pkt_set_length(pkt_t *pkt, const uint16_t length){
 	pkt->length = length;
 	return PKT_OK;
 }
-
+/*
+ * modifie le champ crc de pkt avec la valeur fournies en argument
+ */
 pkt_status_code pkt_set_crc(pkt_t *pkt, const uint32_t crc){
 	pkt->crc = crc;
 	return PKT_OK;
 }
-
+/*
+ * copie dans la zone mémoire pointée par le payload de pkt le contenu de data
+ */
 pkt_status_code pkt_set_payload(pkt_t *pkt, const char *data, const uint16_t length){
 
   pkt -> payload  = (char*) malloc(sizeof(char) * length);
@@ -223,13 +236,16 @@ pkt_status_code pkt_set_payload(pkt_t *pkt, const char *data, const uint16_t len
   
   return PKT_OK;	
 }
-
-
+/*
+ * modifie le champ timestamp de pkt avec la valeur fournies en argument
+ */
 pkt_status_code pkt_set_timestamp(pkt_t *pkt, const uint32_t timestamp){
 	pkt->timestamp = timestamp;
     return PKT_OK;
 }
-
+/*
+ * retourne la valeur du champ crc de pkt
+ */
 uint32_t pkt_get_timestamp(const pkt_t* pkt){
 	return pkt->timestamp;
 }

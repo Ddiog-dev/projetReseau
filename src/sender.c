@@ -24,7 +24,7 @@ int main(int argc, char ** argv){
 		return 0;
 	}
 	
-	int port;
+	int port=65001;
 	char* host = (char *) malloc(1024);
 	char* filename;
 	

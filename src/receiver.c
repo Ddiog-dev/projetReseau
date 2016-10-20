@@ -32,7 +32,7 @@ int main(int argc, char ** argv){
 		return 0;
 	}
 	
-	int port;
+	int port=65001;
 	char* host = (char *) malloc(1024);
 	if(host == NULL) return 1;
 	char* filename = (char*) malloc(1024);
@@ -121,7 +121,7 @@ int main(int argc, char ** argv){
 		
 	  //Lecture du socket en attendant que quelques chose arrive 
 	  size_t size_read = read_buf(sfd, buffer, length_buf);
-	  
+	  printf("sizeread=%zu \n",size_read);
 
 	  //Création d'un nouveau packet
 	  pkt_t *pkt = pkt_new();
@@ -152,7 +152,6 @@ int main(int argc, char ** argv){
 	 
 	
 	  if(!eof) {
-//printf("Ici dans le if \n");
 		//Si CRC ne correspondent pas ou pas de header, envoie un ptype_ack 
 		if(pkt_stat == E_CRC || pkt_stat == E_NOHEADER || pkt_stat == E_TYPE || pkt_stat == E_WINDOW) {
 			if(pkt_stat == E_NOHEADER) fprintf(stderr, "decode : pas de header\n");
@@ -170,8 +169,7 @@ int main(int argc, char ** argv){
 			err2 = write_buf(sfd ,pkt, list_head,  list_tail);
 			if(err2 == E_TYPE) fprintf(stderr, "write_buf : erreur de type de pkt_t attendu\n"); 
 			if(err2 == E_SEQNUM) fprintf(stderr, "write_buf : pkt_t pas dans la window\n");
-		}
-	  	  		
+		}		
 	}
 
        
