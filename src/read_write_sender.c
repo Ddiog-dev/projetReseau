@@ -226,6 +226,7 @@ void read_write_sender(const int sfd, const int fd){
 						break;
 					}
 					// Mise en buffer du paquet envoyé
+
 					int perr = push(&buffer_tail, &buffer_head, p);
 					if(perr == -1){
 						fprintf(stderr, "Error buffering packet\n");
@@ -275,30 +276,28 @@ int remove_from_buffer(timeCheck **list_head,timeCheck **list_tail, uint8_t seq_
 	timeCheck* iter=*list_head;//on initialise le pointeur qui va nous permettre de parcourir la liste
     printf("remove 1 \n");
     printf(" pointeur iter= %p\n",iter);
-	if(iter==NULL)return -1;
-	while(iter->next!=NULL){
+	if(iter==NULL)return -1; // si la head est NULL
+	while(iter->next!=NULL){ // tant qu'on est pas au dernier element du buffer
         printf(" seq num actu : %i \n",pkt_get_seqnum(iter->pkt));
         printf("remove 1.2 \n");
-		if(seq_wanted>=pkt_get_seqnum((const pkt_t*)iter->pkt)){
-            if(iter==*list_head)*list_head=iter->next;
-			if(iter->prev!=NULL)iter->prev->next=iter->next;
-			iter->next->prev=iter->prev;
+		if(seq_wanted>=pkt_get_seqnum((const pkt_t*)iter->pkt)){ // si le num de séquence fournis est supérieur ou égale au numéro courant
+            if(iter==*list_head)*list_head=iter->next; // si le noueud courant est la tête on met la tête a jour
+			if(iter->prev!=NULL)iter->prev->next=iter->next; // si iter -> prev ne pointe pas vers NULL
+			iter->next->prev=iter->prev;// on met les pointeur a jour
 			free(iter);
 		}
 		iter=iter->next;
 	}
     printf("remove 2 \n");
-	if(seq_wanted>=pkt_get_seqnum((const pkt_t*)iter->pkt)){
-		if((*list_head)==(*list_tail)){
-			*list_head=NULL;
-			*list_tail=NULL;
-			free(iter);
+	if(seq_wanted>=pkt_get_seqnum((const pkt_t*)iter->pkt)){ // si le num de séquence fournis est supérieur ou égale au numéro courant
+		if((*list_head)==(*list_tail)){// si il y a 1 seul élément dans la liste
+			free(iter);//
             printf("remove 2.1 \n");
 			return 0;
 
 		}
         printf("remove 2.2 \n");
-		iter->prev->next=NULL;
+        *list_tail=iter->prev; // on redirige la queue de la liste vers l'élement précédent
 		free(iter);
 		return 0;
 	}
@@ -314,7 +313,7 @@ int push_time_check(timeCheck **list_head,timeCheck **list_tail,pkt_t* pkt){
 	if(pkt==NULL)return -1;
     timeCheck* elem=init(pkt);
     printf("push 2 \n");
-	if(*list_head==NULL){
+	if(*list_head==NULL){ //si y a rien dans la liste
 		*list_head=elem;
 		*list_tail=elem;
 		elem->next=NULL;
@@ -323,7 +322,7 @@ int push_time_check(timeCheck **list_head,timeCheck **list_tail,pkt_t* pkt){
 		return 0;
 	}
     printf("push 3 \n");
-	(*list_tail)->next=elem;
+	(*list_tail)->next=elem;//tout les autres cas
 	elem->prev=(*list_tail);
 	elem->next=NULL;
 	(*list_tail)=elem;
@@ -362,28 +361,28 @@ int check_time_out(timeCheck** list_head, timeCheck** list_tail,pkt_t_node** buf
     list_tail=list_tail;
     printf("checkTimeOut 1 \n");
     timeCheck* iter=*list_head;//on initialise le pointeur qui va nous permettre de parcourir la liste
-    if(iter==NULL||buff_head==NULL)return 0;
+    if(iter==NULL||buff_head==NULL)return 0; // si les listes sont vides
     uint32_t timestamp;
     printf("checkTimeOut 2 \n");
     int err;
     ssize_t size;
-    char* message = (char*) malloc(sizeof(char)*PKT_MAX_PAYLOAD+12);
+    char* message = (char*) malloc(sizeof(char)*PKT_MAX_PAYLOAD+12);// on alloue une zone message de 524 bytes
     while(iter->next!=NULL){
         printf("checkTimeOut 3 \n");
-        timestamp=pkt_get_timestamp(iter->pkt);
-        if((time(&now)-timestamp)>=rtt.tv_usec){
+        timestamp=pkt_get_timestamp(iter->pkt);//on récupère le timestamp du pkt de iter
+        if((time(&now)-timestamp)>=rtt.tv_usec){// on vérifie si le packet a time out
             printf("checkTimeOut 4 \n");
-            pop_s(buff_head,buff_tail,pkt_get_seqnum(iter->pkt));
+            pop_s(buff_head,buff_tail,pkt_get_seqnum(iter->pkt));// on retire le paquet du buffer sender qui possède le numéro de séquence de pkt
             //TODO On renvoit le paquet et on met le timestamp a jour
-            set__timeCheck_timestamp(iter,time(&now));
-            pkt_status_code status = pkt_encode(iter->pkt, message, (size_t*)&size);
+            set__timeCheck_timestamp(iter,time(&now));// on met le timestamp du packet timeCheck a jour
+            pkt_status_code status = pkt_encode(iter->pkt, message, (size_t*)&size);// on encode pkt
             if(status != PKT_OK){
                 fprintf(stderr, "Encoding failed (status code %d)\n", status);
                 break;
             }
             printf("checkTimeOut 5 \n");
             // Envoi du paquet sur le socket
-            err = write(sfd, (void*) message, size);
+            err = write(sfd, (void*) message, size); // on envoie pkt
             printf("sizeOfMessage %zu \n",sizeof(message));
             printf("err= %d \n",err);
             if(err == -1){
@@ -392,7 +391,8 @@ int check_time_out(timeCheck** list_head, timeCheck** list_tail,pkt_t_node** buf
             }
             printf("checkTimeOut 6 \n");
             // Mise en buffer du paquet envoyé
-            int perr = push(&buffer_tail, &buffer_head, iter->pkt);
+
+            int perr = push(&buffer_tail, &buffer_head, iter->pkt);// on le remet dans le buffers des senders
             if(perr == -1){
                 fprintf(stderr, "Error buffering packet\n");
                 break;
@@ -400,10 +400,10 @@ int check_time_out(timeCheck** list_head, timeCheck** list_tail,pkt_t_node** buf
         }
         iter=iter->next;
     }
-    timestamp=pkt_get_timestamp(iter->pkt);
-    if(time(&now)-timestamp>=rtt.tv_usec){
+    timestamp=pkt_get_timestamp(iter->pkt);// on récupère le timestamp  de iter->pkt
+    if(time(&now)-timestamp>=rtt.tv_usec){ // on vérifie si ca a time out
         printf("checkTimeOut 7 \n");
-        pop_s(buff_head,buff_tail,pkt_get_seqnum(iter->pkt));
+        pop_s(buff_head,buff_tail,pkt_get_seqnum(iter->pkt)); // on retire le paquet du buffer sender qui possède le numéro de séquence de pkt
         //TODO On renvoit le paquet et on met le timestamp a jour
         pkt_set_timestamp(iter->pkt,time(&now));
         pkt_status_code status = pkt_encode(iter->pkt, message, (size_t*)&size);
@@ -420,6 +420,7 @@ int check_time_out(timeCheck** list_head, timeCheck** list_tail,pkt_t_node** buf
         }
         printf("checkTimeOut 9 \n");
         // Mise en buffer du paquet envoyé
+
         int perr = push(&buffer_tail, &buffer_head, iter->pkt);
         if(perr == -1) {
             fprintf(stderr, "Error buffering packet\n");
